@@ -2,7 +2,7 @@
 /* ===== 아이템 일러스트 아이콘 (캔버스 벡터 페인팅) =====
    장비는 부위 · 무기 유형 · 등급 · 고유 시드 · 강화 수치에 따라 모양과 색이 달라진다. 모든 결과는 dataURL 로 캐시. */
 const ICON_CACHE = new Map();
-const IC_S = 128;
+let IC_S = 128;
 function icCanvas(paint) { const c = document.createElement('canvas'); c.width = c.height = IC_S; const x = c.getContext('2d'); x.scale(IC_S / 64, IC_S / 64); x.lineJoin = 'round'; x.lineCap = 'round'; paint(x); return c.toDataURL(); }
 const OL = '#17121d';
 function metalGrad(x, x0, y0, x1, y1, c) { const g = x.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, shade(c, .28)); g.addColorStop(.45, c); g.addColorStop(.55, shade(c, -.18)); g.addColorStop(1, shade(c, .08)); return g; }

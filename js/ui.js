@@ -103,6 +103,7 @@ const UI = (() => {
     { k: 'bgm', n: `배경음악 〈 ${AUDIO.bgm ? '켜기' : '끄기'} 〉`, d: '절차 생성 오음계 배경음악' },
     { k: 'sfx', n: `효과음 〈 ${AUDIO.sfx ? '켜기' : '끄기'} 〉`, d: '타격음 · 기합 · 효과음' },
     { k: 'voice', n: `음성 〈 ${VOICE.on ? '켜기' : '끄기'} 〉`, d: voiceDesc() },
+    { k: 'style', n: `외형 〈 ${STYLE.mc ? '마인크래프트' : '사실적'} 〉`, d: '캐릭터 · 장비 · 전장 외형 — 마인크래프트 블록 스타일 / 사실적 셀 셰이딩' },
     { k: 'help', n: '조작 · 커맨드 안내', d: '조작키 · 커맨드 기술 · RPG 시스템 요약' }];
   function renderTitle() {
     const it = TITLE_ITEMS(); $('#tmenu').innerHTML = it.map((m, i) => `<button class="tm ${i === titleSel ? 'on' : ''}" data-i="${i}">${m.n}</button>`).join('');
@@ -114,6 +115,7 @@ const UI = (() => {
     if (k === 'diff') { diffIdx = (diffIdx + (dir || 1) + 4) % 4; setPref('diff', diffIdx); }
     else if (k === 'bgm') { AUDIO.bgm = !AUDIO.bgm; setPref('bgm', AUDIO.bgm); }
     else if (k === 'sfx') { AUDIO.sfx = !AUDIO.sfx; setPref('sfx', AUDIO.sfx); }
+    else if (k === 'style') { applyStyle(!STYLE.mc); enterMenu(); }
     else if (k === 'voice') { setVoice(!VOICE.on); if (VOICE.on) speak('관우', '음성을 켰소. 인물마다 목소리가 다르오.'); }
     else if (enter && k === 'new') { toSelect(); return; }
     else if (enter && k === 'cont') { openSlots('load'); return; }
@@ -351,8 +353,8 @@ const UI = (() => {
     for (const m of PV.f.meshes) m.material = m.userData.mat;
     const fo = slot && FOCUS[slot]; PV.tFocus = fo ? fo[0] : 1.05; PV.tDist = fo ? fo[1] : 4.6;
     if (!slot) return;
-    for (const m of PV.f.meshes) if (m.userData.slot === slot || (slot === 'ring' && m.userData.slot === 'gloves')) { const o = m.userData.mat; if (!o || !o.isMaterial) continue;
-      let h = HLM.get(o); if (!h) { h = o.clone(); h.onBeforeCompile = o.onBeforeCompile; h.customProgramCacheKey = o.customProgramCacheKey; if (!h.emissive) h.emissive = new T.Color(); h.emissive.set('#ffc850'); h.emissiveIntensity = .5; HLM.set(o, h); } m.material = h; }
+    const hlOf = o => { let h = HLM.get(o); if (!h) { h = o.clone(); h.onBeforeCompile = o.onBeforeCompile; h.customProgramCacheKey = o.customProgramCacheKey; if (!h.emissive) h.emissive = new T.Color(); h.emissive.set('#ffc850'); h.emissiveIntensity = .5; HLM.set(o, h); } return h; };
+    for (const m of PV.f.meshes) if (m.userData.slot === slot || (slot === 'ring' && m.userData.slot === 'gloves')) { const o = m.userData.mat; if (Array.isArray(o)) m.material = o.map(hlOf); else if (o && o.isMaterial) m.material = hlOf(o); }
   }
   function pvFrame(dt) {
     if (!PV.f || !PV.r || !PV.r.domElement.isConnected) return;
@@ -461,6 +463,11 @@ const UI = (() => {
     paused: () => !!modal || pauseOn, _choice: null };
 })();
 
+/* ---------------- 외형 스타일 ---------------- */
+function applyStyle(mc) {
+  STYLE.mc = mc; setPref('style', mc ? 'mc' : 'real'); ICON_CACHE.clear(); IC_S = mc ? 32 : 128; document.body.classList.toggle('mc', mc);
+}
+applyStyle(getPref('style', 'mc') === 'mc');
 /* ---------------- 시작 ---------------- */
 resize();
 const bootGame = () => { UI.toTitle(); requestAnimationFrame(frame); };

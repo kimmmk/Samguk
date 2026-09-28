@@ -126,7 +126,7 @@ function headGeo(kind) {
 }
 const HAT_OF = { guan: 'guan', zhang: 'zhang', zhao: 'zhao', huang: 'huang', zhuge: 'zhuge', ma: 'ma', diao: 'diao', wei: 'wei', lubu: 'lubu', xu: 'helm2', gan: 'gan', sun: 'sun' };
 /* ---------- 본체 ---------- */
-function buildFighter(L, opt = {}) {
+function buildFighterReal(L, opt = {}) {
   const root = new T.Group(), body = new T.Group(); root.add(body);
   const meshes = [], flags = [], gear = L.gear || {};
   function add(parent, g, color, p, o = {}) {

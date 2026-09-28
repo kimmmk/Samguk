@@ -82,7 +82,8 @@ function disposeWorld() {
   ENV.flags = []; ENV.flames = []; ENV.emitters = []; WATERS.length = 0; clearFx();
 }
 function buildEnv(key, len) {
-  const A = ATMOS[key]; applyAtmosphere(A); ENV.key = key;
+  if (STYLE.mc) return buildEnvMC(key, len);
+  const A = ATMOS[key]; applyAtmosphere(A); ENV.key = key; SKY_U.uBlock.value = 0;
   const L = len, x0 = -70, x1 = L + 90, WX = x1 - x0, cx = (x0 + x1) / 2, bg = A.bg, fs = FLAGSET[A.faction];
   if (bg !== 'redcliff') {
     const z0 = bg === 'bridge' ? -9 : -230, z1 = 40, D = z1 - z0, gt = groundTex(A.ground); gt.repeat.set(WX / 9, D / 9);

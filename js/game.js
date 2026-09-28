@@ -136,8 +136,10 @@ function refreshStats(p) {
 function makeJar(x, z, mark) {
   const g = new T.Group(); g.position.set(x, 0, z);
   const pts = [[0, 0], [.26, .02], [.36, .28], [.33, .56], [.17, .76], [.2, .86], [.001, .86]].map(p => new T.Vector2(p[0], p[1]));
-  const lg = geo('jar', () => new T.LatheGeometry(pts, 16)), m = new T.Mesh(lg, toon(mark ? '#8a3a2a' : '#a8623a')); m.castShadow = true; g.add(m);
-  const ol = new T.Mesh(lg, OUTLINE); ol.scale.setScalar(1.05); ol.position.y = -.02; g.add(ol);
+  if (STYLE.mc) { const tc = mark ? '#8a3a2a' : '#a8623a', t = pxTex('pot|' + tc, 8, 8, x => { fillN(x, 0, 0, 8, 8, tc, 'pot' + tc, .08); for (let i = 0; i < 8; i++) { P(x, i, 1, shade(tc, -.2)); P(x, i, 6, shade(tc, -.2)); } P(x, 3, 3, '#2a1a10'); P(x, 4, 4, '#2a1a10'); });
+    const m = new T.Mesh(geo('mcpot', () => new T.BoxGeometry(.7, .8, .7)), mcMat(t)); m.position.y = .4; m.castShadow = true; g.add(m); }
+  else { const lg = geo('jar', () => new T.LatheGeometry(pts, 16)), m = new T.Mesh(lg, toon(mark ? '#8a3a2a' : '#a8623a')); m.castShadow = true; g.add(m);
+  const ol = new T.Mesh(lg, OUTLINE); ol.scale.setScalar(1.05); ol.position.y = -.02; g.add(ol); }
   if (mark) { const s = new T.Mesh(geo('jarmark', () => new T.PlaneGeometry(.34, .34)), new T.MeshBasicMaterial({ map: charTex(mark, '#f0e0b0', '#8a1a10', 128, 128), transparent: true })); s.position.set(0, .45, .35); g.add(s); }
   world.add(g); B.props.push({ kind: 'jar', g, x, z, hp: 1, mark });
 }

@@ -64,11 +64,11 @@ const NOISE_GLSL = `
     return mix(mix(h21(i), h21(i+vec2(1.0,0.0)), f.x), mix(h21(i+vec2(0.0,1.0)), h21(i+vec2(1.0,1.0)), f.x), f.y); }
   float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a*vn(p); p = p*2.03 + vec2(1.7, 9.2); a *= 0.5; } return v; }`;
 const SKY_U = { uTop: { value: col(0x3d8fe6) }, uHor: { value: col(0xcdeeff) }, uSun: { value: col(0xfff2d0) }, uDir: { value: new T.Vector3(0, .5, -1).normalize() },
-  uCloud: { value: col(0xffffff) }, uTime: { value: 0 }, uMoon: { value: 0 }, uStars: { value: 0 }, uCloudAmt: { value: 0.5 } };
+  uCloud: { value: col(0xffffff) }, uTime: { value: 0 }, uMoon: { value: 0 }, uStars: { value: 0 }, uCloudAmt: { value: 0.5 }, uBlock: { value: 0 } };
 const sky = new T.Mesh(new T.SphereGeometry(460, 48, 24), new T.ShaderMaterial({
   uniforms: SKY_U, side: T.BackSide, depthWrite: false, fog: false,
   vertexShader: 'varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: `varying vec3 vDir; uniform vec3 uTop, uHor, uSun, uDir, uCloud; uniform float uTime, uMoon, uStars, uCloudAmt;
+  fragmentShader: `varying vec3 vDir; uniform vec3 uTop, uHor, uSun, uDir, uCloud; uniform float uTime, uMoon, uStars, uCloudAmt, uBlock;
     ${NOISE_GLSL}
     void main(){
       vec3 d = normalize(vDir); vec3 sd = normalize(uDir); float h = clamp(d.y, 0.0, 1.0);
@@ -77,8 +77,8 @@ const sky = new T.Mesh(new T.SphereGeometry(460, 48, 24), new T.ShaderMaterial({
       c += uSun * (smoothstep(0.99925, 0.9996, s) * mix(7.0, 2.4, uMoon) + pow(s, 22.0) * 0.4 + pow(s, 4.0) * 0.14 * (1.0 - uMoon * 0.6));
       if (uStars > 0.0) { vec2 sp = d.xz / (d.y + 0.35) * 170.0; float r = h21(floor(sp));
         c += vec3(step(0.9955, r) * uStars * smoothstep(0.05, 0.4, d.y) * (0.55 + 0.45 * sin(uTime * 3.0 + r * 60.0)) * 1.6); }
-      if (d.y > 0.0) { vec2 cp = d.xz / (d.y + 0.16) * 1.5 + vec2(uTime * 0.012, uTime * 0.004); float n = fbm(cp);
-        float m = smoothstep(1.02 - uCloudAmt, 1.16 - uCloudAmt, n) * smoothstep(0.02, 0.22, d.y);
+      if (d.y > 0.0) { vec2 cp = d.xz / (d.y + 0.16) * 1.5 + vec2(uTime * 0.012, uTime * 0.004); if (uBlock > 0.5) cp = floor(cp * 5.0) / 5.0; float n = fbm(cp);
+        float m = (uBlock > 0.5 ? step(1.09 - uCloudAmt, n) : smoothstep(1.02 - uCloudAmt, 1.16 - uCloudAmt, n)) * smoothstep(0.02, 0.22, d.y);
         vec3 cc = uCloud * mix(0.72, 1.12, smoothstep(0.55, 0.82, n)) + uSun * pow(s, 6.0) * 0.5; c = mix(c, cc, m * 0.92); }
       gl_FragColor = vec4(c, 1.0);
     }`
@@ -390,7 +390,7 @@ function buildWeapon(w, type, L, add, elem) {
   }
 }
 /* buildFighter 는 chars.js (사실적 v2) */
-function buildHorse(c) {
+function buildHorseReal(c) {
   const g = new T.Group(), meshes = [];
   const add = (gg, color, p, o = {}) => { const m = new T.Mesh(gg, toon(color)); m.position.set(...p); if (o.r) m.rotation.set(...o.r); if (o.s) m.scale.set(...o.s); m.castShadow = true;
     if (!gg.boundingSphere) gg.computeBoundingSphere(); const k = 1 + .03 / gg.boundingSphere.radius; const ol = new T.Mesh(gg, OUTLINE); ol.scale.setScalar(k); m.add(ol); g.add(m); meshes.push(m); return m; };
@@ -478,7 +478,7 @@ function pose(f, dt) {
   R.legL.rotation.z = f.mounted ? .5 : 0; R.legR.rotation.z = f.mounted ? -.5 : 0;
   R.body.rotation.x = P.fast ? P.brx : lerp(R.body.rotation.x, P.brx, k);
   R.body.rotation.y = P.bry;
-  const mountY = f.mounted ? (R.hipBase ? .66 : 1.0) : 0;
+  const mountY = f.mounted ? (R.mountY ?? (R.hipBase ? .66 : 1.0)) : 0;
   R.body.position.y = lerp(R.body.position.y, P.by + mountY, f.mounted ? 1 : k);
   if (R.cape) R.cape.rotation.x = .14 + Math.min(.8, Math.abs(f.vx || 0) * .08 + Math.max(0, f.vy || 0) * .05) + Math.sin(t * 3.2) * .05;
   if (R.shield) R.shield.visible = !f.shieldBroken;
@@ -556,7 +556,7 @@ GRASS_MAT.userData.shared = true;
 const WATERS = [];
 function waterMat(deep, shal, glow) {
   const m = new T.ShaderMaterial({
-    uniforms: T.UniformsUtils.merge([T.UniformsLib.fog, { uTime: { value: 0 }, uDeep: { value: col(deep) }, uShal: { value: col(shal) }, uGlow: { value: col(glow) } }]),
+    uniforms: T.UniformsUtils.merge([T.UniformsLib.fog, { uTime: { value: 0 }, uDeep: { value: col(deep) }, uShal: { value: col(shal) }, uGlow: { value: col(glow) }, uBlock: { value: (typeof STYLE !== 'undefined' && STYLE.mc) ? 1 : 0 } }]),
     vertexShader: `
       #include <common>
       #include <fog_pars_vertex>
@@ -567,10 +567,10 @@ function waterMat(deep, shal, glow) {
     fragmentShader: `
       #include <common>
       #include <fog_pars_fragment>
-      uniform float uTime; uniform vec3 uDeep, uShal, uGlow; varying vec3 vW;
+      uniform float uTime, uBlock; uniform vec3 uDeep, uShal, uGlow; varying vec3 vW;
       ${NOISE_GLSL}
       void main(){
-        vec2 p = vW.xz;
+        vec2 p = vW.xz; if (uBlock > 0.5) p = floor(p * 2.0) / 2.0;
         float n = vn(p * 0.3 + vec2(uTime * 0.22, uTime * 0.08)) * 0.6 + vn(p * 0.8 - vec2(uTime * 0.35, 0.0)) * 0.4;
         float band = smoothstep(0.6, 0.66, n) - smoothstep(0.7, 0.76, n);
         vec3 c = mix(uDeep, uShal, n); c += uGlow * band * 0.8;
