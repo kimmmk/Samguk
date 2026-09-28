@@ -3,7 +3,7 @@
    · 캐릭터: 논리 해상도(화면 2x2 픽셀 = 도트 1칸)로 그린 뒤
      ① 투명도 경계를 딱 끊고 ② 색을 단계로 끊어 셀 음영을 만들고 ③ 실루엣에 짙은 색 외곽선(셀렉티브 아웃라인)을 두른다.
      같은 외형 · 자세는 결과를 캐시해 매 프레임 다시 가공하지 않는다.
-   · 배경: 저해상도로 그린 뒤 디더링 + 색 단계화 → 도트 배경
+   · 배경: 저해상도로 그린 뒤 잘게 색 단계화 + 약한 디더링 → 부드러운 도트 배경
    · 장비 아이콘: 40x40 도트 + 외곽선
    · 피해 숫자: 굵은 주황 · 노랑 숫자가 튀어 오르는 연출 */
 const DOT_BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>(v+.5)/16-.5);
@@ -11,7 +11,7 @@ const cb255=v=>v<0?0:v>255?255:v;
 /* 캔버스 도트화: 반환값 = 불투명 영역 bbox */
 function dotify(c,o){
   o=o||{};const w=o.w||c.width,h=o.h||c.height,g=c.getContext('2d'),id=g.getImageData(0,0,w,h),d=id.data;
-  const S=o.step||24,dith=o.dither?S:0,at=o.at==null?100:o.at,aq=o.alphaQ;
+  const S=o.step||24,dith=o.dither===true?S:(o.dither||0),at=o.at==null?100:o.at,aq=o.alphaQ;
   let x0=w,y0=h,x1=-1,y1=-1;
   for(let y=0;y<h;y++){const row=(y&3)*4;for(let x=0;x<w;x++){const i=(y*w+x)*4;let a=d[i+3];
     if(a<at){d[i+3]=0;continue}
@@ -30,7 +30,7 @@ function dotify(c,o){
 }
 
 /* 캐릭터용 빠른 도트화: 32비트 픽셀 + 색 단계 표 (디더링 없음) */
-const DOT_QT=new Uint8Array(256);for(let v=0;v<256;v++)DOT_QT[v]=Math.min(255,Math.round(v/26)*26);
+const DOT_QT=new Uint8Array(256);for(let v=0;v<256;v++)DOT_QT[v]=Math.min(255,Math.round(v/13)*13);
 function dotifyFast(c,w,h,at,k){
   const g=c.getContext('2d'),id=g.getImageData(0,0,w,h),d=new Uint32Array(id.data.buffer),A=new Uint8Array(w*h),Q=DOT_QT;
   let x0=w,y0=h,x1=-1,y1=-1;
@@ -44,13 +44,13 @@ function dotifyFast(c,w,h,at,k){
     if(n<0)continue;const v=d[n];d[q]=(0xff000000|((((v>>>16)&255)*k+10)<<16)|((((v>>>8)&255)*k+4)<<8)|(((v&255)*k+8)|0))>>>0}
   g.putImageData(id,0,0);return{x0:X0,y0:Y0,x1:X1,y1:Y1};
 }
-/* GPU 도트 필터 (SVG): 투명도 끊기 · 색 11단계 · 1px 어두운 외곽선 — 픽셀을 CPU로 읽지 않아 빠르다 */
+/* GPU 도트 필터 (SVG): 투명도 끊기 · 색 21단계 · 1px 어두운 외곽선 — 픽셀을 CPU로 읽지 않아 빠르다 */
 (function(){const d=document.createElement('div');
   d.innerHTML='<svg width="0" height="0" style="position:absolute"><filter id="dotf" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">'+
   '<feComponentTransfer in="SourceGraphic" result="q"><feFuncA type="discrete" tableValues="0 0 0 1 1 1 1 1"/>'+
-  ['R','G','B'].map(c=>'<feFunc'+c+' type="discrete" tableValues="0 .1 .2 .3 .4 .5 .6 .7 .8 .9 1"/>').join('')+'</feComponentTransfer>'+
+  ['R','G','B'].map(c=>'<feFunc'+c+' type="discrete" tableValues="'+Array.from({length:21},(_,i)=>(i/20).toFixed(2)).join(' ')+'"/>').join('')+'</feComponentTransfer>'+
   '<feMorphology in="q" operator="dilate" radius="1" result="dil"/>'+
-  '<feColorMatrix in="dil" type="matrix" values="0.22 0 0 0 0.03 0 0.22 0 0 0.015 0 0 0.22 0 0.04 0 0 0 1 0" result="dark"/>'+
+  '<feColorMatrix in="dil" type="matrix" values="0.3 0 0 0 0.03 0 0.3 0 0 0.015 0 0 0.3 0 0.04 0 0 0 1 0" result="dark"/>'+
   '<feMerge><feMergeNode in="dark"/><feMergeNode in="q"/></feMerge></filter></svg>';
   document.body.appendChild(d.firstChild)})();
 /* ---------- 캐릭터 ---------- */
@@ -93,9 +93,10 @@ renderModel=renderDot;renderModelOutlined=(g,L,pose,sx,sy,scale,facing,opt)=>ren
 const _buildBGD=buildBG;
 buildBG=function(kind){
   _buildBGD(kind);if(!BG||!BG.hd)return;
-  dotify(BG.sky,{step:18,dither:true,at:0});
-  BG.layers.forEach((Ly,i)=>dotify(Ly.c,{step:20,dither:true,at:i===0&&Ly.drift?30:60,alphaQ:!!Ly.drift}));
-  dotify(BG.ground,{step:18,dither:true,at:0});
+  /* 부드러운 도트: 색 단계를 잘게(약 32단계) · 디더링은 띠 무늬만 막을 정도로 약하게 — AI 스프라이트의 매끄러운 명암과 어울리게 */
+  dotify(BG.sky,{step:7,dither:3,at:0});
+  BG.layers.forEach((Ly,i)=>dotify(Ly.c,{step:8,dither:3,at:i===0&&Ly.drift?30:60,alphaQ:!!Ly.drift}));
+  dotify(BG.ground,{step:7,dither:3,at:0});
 };
 
 /* ---------- 장비 아이콘: 40x40 도트 ---------- */

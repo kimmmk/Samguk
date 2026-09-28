@@ -7,3 +7,5 @@ anim/
 anim2/
 anim3/
 *.safetensors
+gen/
+run_log*.txt
