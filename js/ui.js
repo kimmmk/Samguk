@@ -307,7 +307,7 @@ const UI = (() => {
     if (it) { const c = enhCost(it), rc = rerollCost(it), y = dismantleYield(it), e = it.e || 0, eqd = Object.values(R.eq).includes(it);
       act = `<div class="tipin"><img class="tipimg" src="${itemIcon(it)}" alt="">${itemTip(it, P)}</div><div class="smith">
         <div><b>강화 +${e} → +${Math.min(15, e + 1)}</b><small>성공률 ${e >= 15 ? '-' : ENH_RATE[e] + '%'} · 금화 ${c.gold} · 강화석 ${c.stone}${e >= 7 ? ' · 실패 시 1단계 하락' : ''}</small><button class="btn" id="s-enh" ${e >= 15 ? 'disabled' : ''}>강화</button></div>
-        <div><b>재련</b><small>레어 · 에픽 옵션 재설정 · 금화 ${rc.gold} · 비급 조각 ${rc.frag}</small><button class="btn ghost" id="s-rr" ${it.g === 'rare' || it.g === 'epic' ? '' : 'disabled'}>재련</button></div>
+        <div><b>재련</b><small>레어 · 에픽 옵션 재설정 · 금화 ${rc.gold} · 비급 조각 ${rc.frag}</small><button class="btn ghost" id="s-rr" ${it.g === 'rare' || it.g === 'epic' || it.g === 'set' ? '' : 'disabled'}>재련</button></div>
         <div><b>분해</b><small>강화석 +${y.stone} · 비급 조각 +${y.frag}</small><button class="btn ghost" id="s-dis" ${eqd || it.lk ? 'disabled' : ''}>분해</button></div></div>`; }
     const h = heroOf(), sks = HSK[h.id].filter(s => ACTIVE_TY[s.ty] && R.sk[s.id]);
     $('#cbody').innerHTML = `<div class="eqwrap"><div class="eqleft"><div class="pvbox" id="pvbox"></div><p class="gold">금화 ${R.gold.toLocaleString('ko-KR')} · 강화석 ${R.mats.stone} · 비급 조각 ${R.mats.frag}</p><div class="bag">${all.map(x => `<button class="bs ${x === it ? 'on' : ''}" data-id="${x.id}">${icon(x)}</button>`).join('')}</div></div>

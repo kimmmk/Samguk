@@ -43,15 +43,15 @@ function calcStats(P, rt) {
   const add = (k, v) => { S[k] = (S[k] || 0) + v; };
   S.procs = []; S.pw = {};
   let atk = 0, def = 0;
-  const setCount = {};
+  const setCount = {}, setIl = {};
   for (const sl of EQ_SLOTS) { const it = R.eq[sl]; if (!it) continue; if (it.rq > P.lvl) continue; if (it.h && it.h !== h.id) continue;
     const b = itemBase(it); atk += b.atk; def += b.def;
     for (const [k, v] of itemAffixes(it)) add(k, v);
-    if (it.set) setCount[it.set] = (setCount[it.set] || 0) + 1;
+    if (it.set) { setCount[it.set] = (setCount[it.set] || 0) + 1; setIl[it.set] = (setIl[it.set] || 0) + it.il; }
     if (it.u && UNIQ[it.u]) { const U = UNIQ[it.u]; if (U.procs) S.procs.push(...U.procs.map(p => ({ ...p, src: it.u }))); if (U.pw) for (const k in U.pw) { if (AF[k]) add(k, U.pw[k]); else S.pw[k] = (S.pw[k] || 0) + U.pw[k]; } if (U.spx) S.spx = U.spx; }
   }
   S.sets = setCount;
-  for (const sid in setCount) { const st = SETS[sid]; if (!st) continue; for (const [n, b] of st.bonus) if (setCount[sid] >= n) for (const k in b) { if (k === 'procs') S.procs.push(...b.procs); else add(k, b[k]); } }
+  for (const sid in setCount) applySetBonus(S, add, sid, setCount[sid], Math.round(setIl[sid] / setCount[sid]));
   /* 패시브 · 오라(스탯) · 활성 버프 */
   for (const s of HSK[h.id]) { const lv = effSkillLv(P, s, null); if (!lv) continue; const L2 = lv + (S.allSkill || 0) + (S['tree' + s.tr] || 0);
     if (s.ty === 'passive' || (s.ty === 'aura' && s.aura === 'stat')) for (const k in s.mods) add(k, s.mods[k][0] + s.mods[k][1] * (L2 - 1));
@@ -102,14 +102,21 @@ function itemName(it) {
   if (it.g === 'epic') return `${pick(EPIC_TITLE)}의 ${it.b}`;
   return it.b;
 }
+function setExtraAffixes(it) {
+  const E = GRADES.epic, n = E.afx[0] + ((Math.random() * (E.afx[1] - E.afx[0] + 1)) | 0) - it.fx;
+  const pool = AF_POOL[it.s].filter(k => !it.af.some(a => a[0] === k) && !k.startsWith('tree'));
+  for (let i = 0; i < n && pool.length; i++) { const k = pool.splice((Math.random() * pool.length) | 0, 1)[0]; it.af.push([k, AFR(k, it.il, E.m)]); }
+}
 function genSpecial(il, g, o) {
   let key, U, setId, piece;
   if (g === 'set') { const ids = Object.keys(SETS).filter(k => SETS[k].req <= il + 12); setId = o.set || pick(ids.length ? ids : Object.keys(SETS)); const st = SETS[setId]; piece = o.piece != null ? st.pieces[o.piece] : pick(st.pieces);
-    const L = Math.max(il, st.req), gm = GRADES.set.m;
+    const L = Math.max(il, st.req), E = GRADES.epic, gm = E.m;
     const it = { id: ITEM_ID++, s: piece.s === 'ring' ? 'ring' : piece.s, g, il: L, rq: st.req, set: setId, n: piece.n, b: piece.n, at: {}, af: [], e: 0, nw: true };
-    if (it.s === 'weapon') { it.wt = o.wt || 'dao'; it.at.atk = Math.round((3 + L) * rand(.95, 1.1) * GRADES.set.bm); }
-    else if (SLOTS[it.s].def) it.at.def = Math.round((3 + 1.2 * L) * SLOTS[it.s].def * rand(.95, 1.1) * GRADES.set.bm);
-    for (const [k, m] of piece.af) it.af.push([k, AF[k].fix ? m : Math.round(AF[k].f(L) * m * gm * rand(.85, 1) * 10) / 10]);
+    /* 기본 성능은 에픽 수준: 에픽 기본치 + 세트 고유 옵션 + 에픽 무작위 옵션 */
+    if (it.s === 'weapon') { it.wt = o.wt || 'dao'; it.at.atk = Math.round((3 + L) * rand(.95, 1.1) * E.bm); }
+    else if (SLOTS[it.s].def) it.at.def = Math.round((3 + 1.2 * L) * SLOTS[it.s].def * rand(.95, 1.1) * E.bm);
+    for (const [k, m] of piece.af) it.af.push([k, AF[k].fix ? m : Math.round(AF[k].f(L) * m * gm * rand(.55, 1) * 10) / 10]);
+    it.fx = it.af.length; setExtraAffixes(it);
     return it; }
   const heroes = o.heroes || [G.pl ? HEROES[G.pl.hero].id : 'guan'];
   const pool = UNIQ_BY_G[g].filter(k => { const u = UNIQ[k]; return (!u.h || heroes.includes(u.h)) && u.req <= Math.max(il + 15, g === 'myth' ? 70 : 30); });
@@ -144,9 +151,10 @@ function enhance(P, it) {
 }
 const rerollCost = it => ({ gold: 80 + it.il * 12, frag: 1 + GRADES[it.g].rank });
 function reroll(P, it) {
-  if (it.g !== 'rare' && it.g !== 'epic') return { ok: false, msg: '레어 · 에픽만 재련할 수 있습니다.' };
+  if (it.g !== 'rare' && it.g !== 'epic' && it.g !== 'set') return { ok: false, msg: '레어 · 에픽 · 세트만 재련할 수 있습니다.' };
   const c = rerollCost(it), R = P.rpg; if (R.gold < c.gold || R.mats.frag < c.frag) return { ok: false, msg: '금화 또는 비급 조각이 부족합니다.' };
   R.gold -= c.gold; R.mats.frag -= c.frag;
+  if (it.g === 'set') { it.fx = it.fx ?? it.af.length; it.af = it.af.slice(0, it.fx); setExtraAffixes(it); return { ok: true, msg: '재련 완료 — 세트 고유 옵션은 유지하고 추가 옵션이 새로 정해졌습니다.' }; }
   const nu = genItem(it.il, it.g, { slot: it.s, wt: it.wt }); it.af = nu.af; it.n = nu.n; it.b = nu.b; return { ok: true, msg: '재련 완료 — 옵션이 새로 정해졌습니다.' };
 }
 const sellPrice = it => Math.round((10 + it.il * 3) * GRADES[it.g].sell * (1 + (it.e || 0) * .3));
@@ -210,8 +218,7 @@ function itemTip(it, P) {
   if (b.atk) lines.push(`<span class="big">공격력 ${Math.round(b.atk)}</span>`); if (b.def) lines.push(`<span class="big">방어력 ${Math.round(b.def)}</span>`);
   for (const [k, v] of itemAffixes(it)) lines.push(`<span class="af">${afTxt(k, v)}</span>`);
   if (it.u && UNIQ[it.u]) for (const tx of UNIQ[it.u].txt || []) lines.push(`<span class="proc">◆ ${tx}</span>`);
-  if (it.set) { const st = SETS[it.set], cnt = P ? (calcStats(P).sets[it.set] || 0) : 0; lines.push(`<span class="set">${st.n} (${cnt}/${st.pieces.length})</span>`);
-    for (const [n, bn] of st.bonus) lines.push(`<span class="set ${cnt >= n ? 'on' : ''}">(${n}) ${st.txt && st.txt[n] ? st.txt[n] : Object.entries(bn).filter(([k]) => k !== 'procs').map(([k, v]) => afTxt(k, v)).join(' · ')}</span>`); }
+  if (it.set) lines.push(...setTipLines(it, P));
   if (it.wt && P) { const hw = HERO_WT[HEROES[P.hero].id]; if (it.wt !== hw) { const bl = WPN_BAL[it.wt], bs = WPN_BAL[hw]; lines.push(`<span class="af">무기 특성: 공격 ×${(bl[0] / bs[0]).toFixed(2)} · 속도 ×${(bl[1] / bs[1]).toFixed(2)} · 사거리 ×${(bl[2] / bs[2]).toFixed(2)}</span>`); } }
   lines.push(`<small class="${bad ? 'bad' : ''}">착용 레벨 ${it.rq}${it.h ? ` · ${HEROES.find(h => h.id === it.h).name} 전용` : ''}</small>`);
   lines.push(`<small>판매 ${sellPrice(it)} 금화</small>`);

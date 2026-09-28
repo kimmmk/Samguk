@@ -813,6 +813,7 @@ function doProc(p, pr, tgt) {
     case 'drFor': p.buffs.push({ id: 'procdr' + W.t, mods: { dr: v }, t: (pr.dur || 180) / 60 }); refreshStats(p); break;
     case 'dragon': fireProj({ kind: 'dragon', team: 'p', from: p, x: p.x + f, z: p.z, vx: f * 15, dmg: d, pierce: true, knock: true, c: pr.col || '#bfe6ff', trail: pr.col || '#bfe6ff', noProc: true }); break;
     case 'heal': p.hp = Math.min(p.S.maxhp, p.hp + p.S.maxhp * v / 100); break;
+    case 'buff': { const id = 'proc_' + (pr.id || pr.src); p.buffs = p.buffs.filter(b => b.id !== id); p.buffs.push({ id, mods: pr.mods, t: (pr.dur || 180) / 60 }); refreshStats(p); if (pr.id) UI.dmg(p.x, 2.9, p.z, SETS[pr.id] ? SETS[pr.id].n.split('(')[0] : '강화', 'react'); break; }
     case 'shield': p.buf.shield = v / 60; UI.dmg(p.x, 2.8, p.z, '금강불괴', 'react'); break;
     case 'burn': if (tgt) { tgt.status.burn = 3; tgt.status.burnDps = pOf(p, 'skill') * .35; } break;
     case 'fireball': fireProj({ kind: 'fireball', team: 'p', from: p, x: p.x + f, z: p.z, vx: f * 12, dmg: d, el: 'fire', explode: 1.8, c: '#ff7a2a', trail: '#ff7a2a', noProc: true }); break;
