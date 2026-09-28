@@ -18,4 +18,5 @@
 - `sprites/ai_zhao`, `sprites/ai_guan` — AI로 생성한 조운 · 관우 팩(대기 · 걷기 · 공격). `sprites/manifest.js`에서 빼면 기존 팩으로 돌아갑니다.
 - 밑그림 생성 · 아틀라스 갱신: `python tools/bake_server.py` 실행 후 `http://127.0.0.1:8777/tools/spritebaker.html`
 - 도트 작가용 규격 · 작업 흐름: `스프라이트_제작가이드.md`
+- AI 팩을 만든 스크립트: `sprite_ai/` (설치 · 실행 순서는 `sprite_ai/README.md`)
 - `tools/gallery.html` — 캐릭터 전체를 크게 늘어놓고 보는 확인용 페이지
