@@ -302,7 +302,7 @@ function spawnBoss() {
     pow: bd.pow * powMulL(lv) * D.edmg, spd: bd.spd * 60 * PX, reach: bd.reach * PX * (bd.look.scale || 1.1), exp: 400, score: bd.score, poiseMax: bd.poise || 80, elem: (BOSS_ULT[bd.name] || {}).col || '#ff5a4a' });
   e.hp = e.maxhp; e.x = B.camX + halfW() + 2.5; e.z = 0; e.facing = -1; e.cool = 2; e.phases = BOSS_PHASES[bd.name] || null; e.phaseI = 0; e.seqI = 0; e.seq = e.phases ? e.phases[0].seq : bd.skills;
   B.enemies.push(e); B.boss = e; B.bossSpawned = true; B.bossT = 0; bgmMode = 'boss';
-  UI.banner('강적 출현', bd.name, bd.title, 2.4, 'boss'); W.slow = .8;
+  UI.banner(`${enemyRankInfo(e).n}(${enemyRankInfo(e).hz}) 출현`, bd.name, bd.title, 2.4, 'boss'); W.slow = .8;
   if (bd.escort) bd.escort.split(' ').forEach((t, i) => B.spawnQ.push({ t: .6 + i * .4, kind: t, side: i % 2 ? -1 : 1 }));
   if (B.chase) { if (B.chase.t > 0) { e.hp = Math.round(e.maxhp * .8); UI.msg('기습 성공! 조조가 허둥댄다 (체력 -20%)'); } else { for (let i = 0; i < 2; i++) { const s = spawnEnemy('o', 1); makeElite(s); } UI.msg('추격이 늦었다… 조조가 전열을 가다듬었다!'); } }
   if (B.escort && !B.escort.dead && !B.escort.lamp) B.escort.hide = true;

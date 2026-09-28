@@ -60,7 +60,7 @@ const UI = (() => {
     const spc = Math.max(30, 50 - effSkillLv(P, SKT[p.h.id][0][4], S)); $('#sp-ring').setAttribute('stroke-dashoffset', String(226.2 * (1 - Math.min(1, p.ki / spc)))); $('#spk').classList.toggle('ready', p.ki >= spc);
     const cb = $('#combo'); if (B.combo >= 2) { cb.hidden = false; $('#combo-n').textContent = B.combo; const c = B.combo; $('#combo-r').textContent = c >= 200 ? '天下無雙' : c >= 100 ? '一騎當千' : c >= 50 ? 'EXCELLENT' : c >= 25 ? 'GREAT' : c >= 10 ? 'GOOD' : ''; } else cb.hidden = true;
     const b = B.boss && !B.boss.remove && !B.boss.dead ? B.boss : B.enemies.find(e => e.mid && !e.decoy && !e.dead);
-    if (b) { show('#bossbar'); $('#boss-name').textContent = b.name; $('#boss-title').textContent = b.title + (b.phases ? ` · 제${b.phaseI + 1}국면` : ''); const r = b.hp / b.maxhp; b.lag = Math.max(r, (b.lag ?? 1) - dt * .35);
+    if (b) { show('#bossbar'); $('#boss-name').textContent = b.name; $('#boss-title').textContent = (b.rankN && b._rk >= 4 ? `【${b.rankN}】 ` : '') + b.title + (b.phases ? ` · 제${b.phaseI + 1}국면` : ''); const r = b.hp / b.maxhp; b.lag = Math.max(r, (b.lag ?? 1) - dt * .35);
       $('#boss-hp').style.width = r * 100 + '%'; $('#boss-lag').style.width = b.lag * 100 + '%'; $('#boss-poise').style.width = Math.min(100, (b.poise || 0) / ((b.poiseMax || 80) * (b.maxhp / 400)) * 100) + '%';
       $('#boss-ticks').innerHTML = (b.phases || []).slice(1).map(ph => `<i style="left:${ph.hp * 100}%"></i>`).join(''); $('#bossbar').classList.toggle('groggy', b.groggy > 0); $('#bossbar').classList.toggle('barrier', !!b.barrier); }
     else show('#bossbar', false);
@@ -81,7 +81,7 @@ const UI = (() => {
     for (const e of [...B.enemies, ...(B.escort && !B.escort.lamp ? [B.escort] : [])]) {
       if (e.dead || e.remove || (e.boss && !e.decoy && !e.mid) || e.decoy) continue; const named = e.elite || e.officer || e.mid || e.team === 'n';
       if (!named && e.hp >= e.maxhp) continue; live.add(e); let b = BARS.get(e);
-      if (!b) { b = document.createElement('div'); b.className = 'ebar' + (e.team === 'n' ? ' ally' : '') + (e.elite ? ' elite' : ''); b.innerHTML = `<span>${e.team === 'n' ? e.npcName : e.elite ? e.eliteName : e.mid ? e.name : e.officer ? '장교' : ''}</span><i></i>`; fx.appendChild(b); BARS.set(e, b); }
+      if (!b) { b = document.createElement('div'); b.className = 'ebar' + (e.team === 'n' ? ' ally' : '') + (e.elite ? ' elite' : '') + (e._rk ? ' rk' + e._rk : ''); b.innerHTML = `<span>${e.team === 'n' ? e.npcName : e.elite ? `${e.rankN || '정예'} · ${e.eliteName}` : e.mid ? `${e.rankN || ''} ${e.name}` : e.officer ? '장교' : ''}</span><i></i>`; fx.appendChild(b); BARS.set(e, b); }
       const [sx, sy] = toScreen(e.x, (e.y || 0) + 2.35 * e.scale + (e.mounted ? 1 : 0), e.z); b.style.transform = `translate(${sx - 30}px,${sy}px)`; b.lastChild.style.width = (e.hp / e.maxhp * 100) + '%'; }
     for (const [e, b] of BARS) if (!live.has(e)) { b.remove(); BARS.delete(e); }
     for (const [L, d] of LOOTL) { const [sx, sy] = toScreen(L.x, 1.4 + L.y, L.z); d.style.transform = `translate(${sx}px,${sy}px) translate(-50%,-100%)`; }
