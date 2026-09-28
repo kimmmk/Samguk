@@ -33,7 +33,7 @@ addEventListener('keydown', e => {
   if (a || e.code === 'Tab') e.preventDefault();
   if (e.repeat) return;
   initAudio(); keys.add(e.code);
-  if (a) { hitK[a] = W.t; PRESS[a] = true; if (DIRS.includes(a)) { dirHist.push({ d: a, t: W.t }); if (dirHist.length > 12) dirHist.shift(); } }
+  if (a) { hitK[a] = W.t; PRESS[a] = true; if (DIRS.includes(a)) { dirHist.push({ d: a, t: W.t, f: B && B.p ? B.p.facing : 1 }); if (dirHist.length > 12) dirHist.shift(); } }
   if (e.ctrlKey && e.altKey && e.shiftKey && G) cheat(e.code);
   UI.onKey(a, e);
 });
@@ -323,7 +323,7 @@ function dealDamage(p, e, base, o = {}) {
   if (e.counterT > 0) { e.counterT = 0; bossCounter(e); return false; }
   /* 방패병 */
   if (e.shield && !e.shieldBroken && !o.knock && !o.skill && (p.y || 0) < .8 && Math.sign(p.x - e.x) === e.facing && e.state !== 'down') {
-    e.hp -= Math.max(1, Math.round(base * .15)); p.ki = Math.min(S.maxki, p.ki + 1); sfx('block'); sparks(e.x + e.facing * .5, 1.2, e.z + .3, '#ffffff', 8); UI.dmg(e.x, 2.4, e.z, '막기', 'block'); return false; }
+    e.hp -= Math.max(1, Math.round(base * .15)); p.ki = Math.min(S.maxki, p.ki + 1); sfx('block'); sparks(e.x + e.facing * .5, 1.2, e.z + .3, '#ffffff', 8); blockFx(e); UI.dmg(e.x, 2.4, e.z, '막기', 'block'); return false; }
   if (e.shield && !e.shieldBroken && (o.knock || (p.y || 0) >= .8)) { e.shieldBroken = 6; UI.dmg(e.x, 2.6, e.z, '방패 파괴!', 'crit'); sfx('heavy'); }
   let dmg = base * rand(.9, 1.1), el = o.el || 'phys';
   if (el !== 'phys') dmg *= 1 + (S[el] || 0) / 100;
@@ -342,7 +342,7 @@ function dealDamage(p, e, base, o = {}) {
   if (e.boss) { e.dmgTaken = (e.dmgTaken || 0) + dmg; if (e.praying && e.dmgTaken - e.prayStart > e.maxhp * .06) { e.praying = false; e.groggy = 110 / 60; setState(e, 'stun'); UI.msg('기도를 끊었다!'); } }
   UI.dmg(e.x + rand(-.3, .3), (e.y || 0) + 1.8 * e.scale, e.z, String(dmg), crit ? 'crit' : 'n', el);
   if (react) UI.dmg(e.x, (e.y || 0) + 2.6 * e.scale, e.z, react, 'react');
-  flashF(e); sparks(e.x - Math.sign(e.x - p.x) * .25, (e.y || 0) + 1.2 * e.scale, e.z + .3, HAN_EL[el] || p.h.fx, crit ? 22 : 12);
+  flashF(e); sparks(e.x - Math.sign(e.x - p.x) * .25, (e.y || 0) + 1.2 * e.scale, e.z + .3, HAN_EL[el] || p.h.fx, crit ? 22 : 12); hitFx(e, p, crit, el, o, dmg);
   W.hitstop = Math.max(W.hitstop, o.stop ?? (crit ? .08 : .045)); W.shake = Math.max(W.shake, o.knock ? .2 : .08);
   sfx(o.knock || crit ? 'heavy' : 'hit');
   p.ki = Math.min(S.maxki, p.ki + 2 * (1 + (S.kiGain || 0) / 100)); B.combo++; B.comboT = 2; B.maxCombo = Math.max(B.maxCombo, B.combo);
@@ -419,7 +419,7 @@ function hurtTarget(t, src, dmg, o = {}) {
   let noKnock = false; if (p.buf && p.buf.shield > 0) { d *= .3; noKnock = true; }
   if (S.pw.manaShield) { const ab = Math.min(p.mp, d * S.pw.manaShield / 100); p.mp -= ab; d -= ab; }
   d = Math.max(1, Math.round(d)); p.hp -= d;
-  UI.dmg(p.x, 2.2, p.z, String(d), 'hurt'); flashF(p); W.shake = Math.max(W.shake, .15); sfx('hit');
+  UI.dmg(p.x, 2.2, p.z, String(d), 'hurt'); flashF(p); W.shake = Math.max(W.shake, .15); sfx('hit'); hurtFx(p, d, src);
   p.ki = Math.min(S.maxki, p.ki + 5 * (1 + (S.kiGain || 0) / 100)); B.combo = 0;
   if (S.thorns && src && !src.dead && src.team === 'e') { src.hp -= S.thorns; if (src.hp <= 0) killEnemy(src, p, -src.facing, {}); }
   if (src && src.elite && src.elite.includes('vamp')) src.hp = Math.min(src.maxhp, src.hp + d);
@@ -430,7 +430,7 @@ function hurtTarget(t, src, dmg, o = {}) {
     p.hp = 0; p.dead = true; p.deathT = 0; knockdown(p, o.dir || -p.facing, 4); return true; }
   if (p.state === 'grabbed') return true;
   if (o.knock && !noKnock) knockdown(p, o.dir || -p.facing, o.kb || 3);
-  else if (!noKnock && !['special', 'spin', 'skill', 'cast'].includes(p.state)) { setState(p, 'hurt'); p.vx = (o.dir || 0) * 1.5; p.invuln = 22 / 60; }
+  else if (!noKnock && !['special', 'spin', 'skill', 'cast', 'xcmd'].includes(p.state)) { setState(p, 'hurt'); p.vx = (o.dir || 0) * 1.5; p.invuln = 22 / 60; }
   return true;
 }
 function perfectDodge(p) {
@@ -549,6 +549,7 @@ function updatePlayer(p, dt) {
       if (p.fear > 0) break;
       const cmd = hit('atk') ? cmdInput(p.facing) : null;
       if (cmd && cmd.k === 'cmd') { if (cmd.dir) p.facing = cmd.dir; startCmd(p); break; }
+      if (cmd && cmd.k === 'x') { startXcmd(p, cmd.i, cmd.f); break; }
       if (cmd && cmd.k === 'launch') { startLaunch(p); break; }
       if (hit('jump')) { p.vy = 11; p.y = .01; setState(p, 'jump'); p.airAtk = false; p.jumpT = W.t; break; }
       if (hit('sp')) { startSpecial(p, held('up')); break; }
@@ -566,6 +567,7 @@ function updatePlayer(p, dt) {
       if (hit('sp') && p.st > p.atkDur * .4) { startSpecial(p, held('up')); break; }
       tickAttack(p, dt); break;
     case 'cmd': tickCmd(p, dt); break;
+    case 'xcmd': tickXcmd(p, dt); break;
     case 'spin': p.vx = ax.x * sp * .6; p.vz = ax.z * sp * .4; if ((p.spinT = (p.spinT || 0) - dt) <= 0) { p.spinT = .13; p.hitIds.clear(); meleeP(p, { reach: reachOf(p) * 1.05, spin: true, dz: 1.6, dmg: pOf(p, 'basic') * .8, kb: 3, knock: p.st > .5 }); slash(p, 'spin', p.h.fx, { s: reachOf(p) / 3, life: .22, follow: true }); sfx('swing'); }
       if (p.st > 40 / 60) { setState(p, 'idle'); p.invuln = .2; } break;
     case 'special': tickSpecial(p, dt); break;
@@ -733,7 +735,7 @@ function castHot(p, i) {
   if (s.ti === 4) { UI.cutin(s.ic, s.n, '각성기 · ' + TREES[p.h.id][s.tr], p.h.fx); p.invuln = Math.max(p.invuln, 1); W.slow = .4; }
   else if (s.ti >= 2) { UI.super(s.n); W.hitstop = .12; }
   if (s.ti >= 2) shout(p.h.name, s.n);
-  magicCircle(p.x, p.z, HAN_EL[s.el] || p.h.fx, 1.4);
+  magicCircle(p.x, p.z, HAN_EL[s.el] || p.h.fx, 1.4); themeCastFx(p, s);
   p.castSk = s; p.castLv = lv; p.castAw = aw; setState(p, 'cast'); p.poseKind = { dash: 'dash', whirl: 'spin', leap: 'slam', proj: 'wave', nova: 'raise', rain: 'raise', chain: 'raise', quake: 'slam', summon: 'raise', buff: 'raise' }[s.ty];
   p.cs = { n: 0, tick: 0 }; p.hitIds.clear();
   if (s.ty === 'buff') { const mods = {}; for (const k in s.mods) mods[k] = s.mods[k][0] + s.mods[k][1] * (lv - 1); p.buffs = p.buffs.filter(b => b.id !== id); p.buffs.push({ id, mods, t: s.dur * (aw ? 1.5 : 1), n: s.n }); refreshStats(p);
@@ -1254,7 +1256,7 @@ function frame(now) {
   } catch (err) { console.error(err); }
   for (const k in PRESS) delete PRESS[k];
   W.flash = Math.max(0, W.flash - rdt * 2.2);
-  const expo = W.exposure + W.flash * .9;
+  const expo = (W.exposure + W.flash * .9) * (1 - (W.dim || 0) * .45);
   if (gradePass) gradePass.uniforms.uExposure.value = expo; else renderer.toneMappingExposure = expo * .85;
   if (bloomPass) bloomPass.strength = .45 + W.flash * .6;
   if (composer) composer.render(); else renderer.render(scene, camera);

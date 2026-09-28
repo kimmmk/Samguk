@@ -412,7 +412,7 @@ const UI = (() => {
     openModal('조작 · 커맨드 안내', `<div class="help"><h4>조작</h4><table><tr><td>이동</td><td>방향키 / WASD</td></tr><tr><td>공격</td><td>Z · J · F (연타 3단 콤보)</td></tr><tr><td>점프</td><td>X · K · G · Space (점프 중 공격 = 점프 공격)</td></tr>
       <tr><td>필살기</td><td>C · L · H (↑+필살 / 5 = 신화 무기 필살기)</td></tr><tr><td>아이템 사용 / 전환</td><td>V · U · R / E · Q · I</td></tr><tr><td>회피</td><td>왼쪽 Shift · O (방향키로 구르기, 없으면 백스텝)</td></tr>
       <tr><td>단축 스킬</td><td>1 · 2 · 3 · 4</td></tr><tr><td>캐릭터 창</td><td>Tab · T</td></tr><tr><td>대사 넘기기</td><td>Enter</td></tr><tr><td>일시정지</td><td>P · Esc</td></tr><tr><td>배경음 / 음성</td><td>N / B</td></tr></table>
-      <h4>커맨드</h4><table>${CMDLIST.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>
+      <h4>커맨드</h4><table>${cmdRowsFor(B && B.p ? B.p.h : null).map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</table>
       <h4>RPG</h4><p>전장 → 군영 → 전장을 반복하며 성장한다. 레벨업마다 능력치 5 · 스킬 1 포인트. 무장마다 3계열 × 5단계 스킬 트리. 장비 등급: 노멀 &lt; 레어 &lt; 에픽 &lt; 세트 &lt; 전용 &lt; 신화.
       원소 반응 — 폭뢰(화상+뇌전) · 융해(빙결+화염) · 빙쇄(빙결+강타) · 초전도(감전+빙결). 방패병은 뒤 · 공중 · 강공격으로, 기병의 붉은 돌격선은 옆 줄로 피한다. 기수를 쓰러뜨리면 적이 도주한다.</p></div>`);
   }
@@ -432,7 +432,7 @@ const UI = (() => {
     sfx('win');
   }
   /* ---------- 일시정지 ---------- */
-  function togglePause() { if (SCENE !== 'battle') return; if (modal) { closeModal(); return; } pauseOn = !pauseOn; show('#pause', pauseOn); if (pauseOn) $('#pause-cmd').innerHTML = CMDLIST.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join(''); }
+  function togglePause() { if (SCENE !== 'battle') return; if (modal) { closeModal(); return; } pauseOn = !pauseOn; show('#pause', pauseOn); if (pauseOn) $('#pause-cmd').innerHTML = cmdRowsFor(B && B.p ? B.p.h : null).map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join(''); }
   $('#pz-resume').onclick = () => togglePause(); $('#pz-char').onclick = () => { togglePause(); openChar('equip'); }; $('#pz-camp').onclick = () => { togglePause(); toCamp('귀환 부적으로 군영에 돌아왔다.'); }; $('#pz-title').onclick = () => { togglePause(); toTitle(); };
   /* ---------- 키 처리 ---------- */
   function onKey(a, e) {

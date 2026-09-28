@@ -451,7 +451,7 @@ function pose(f, dt) {
   else if (s === 'dodge') { const k = clamp(u / .36, 0, 1); if (f.backstep) { P.trx = -.3; P.lL = -.5; } else { P.brx = k * Math.PI * 2 * (f.rollDir || 1); P.hy = .6; P.lL = -1.2; P.lR = -1.2; P.aRx = -1; P.aLx = -1; P.fast = true; } }
   else if (s === 'spin') { P.bry = u * 20; P.aRx = -1.45; P.g = 1.45; P.aRz = -.55; P.hy = .88; P.lL = .4; P.lR = -.4; P.fast = true; }
   else if (s === 'item') { P.aRx = -2.2; P.g = -1; }
-  else if (s === 'special' || s === 'skill' || s === 'cast') {
+  else if (s === 'special' || s === 'skill' || s === 'cast' || s === 'xcmd') {
     const k = f.poseKind || 'raise';
     if (k === 'spin') { P.bry = u * 17; P.aRx = -1.45; P.g = 1.45; P.aRz = -.55; P.hy = .88; P.fast = true; }
     else if (k === 'slam') { if ((f.y || 0) > .05) { P.aRx = -3; P.g = .5; P.aLx = -2.8; P.lL = -.8; P.lR = .4; } else { P.aRx = -.2; P.g = .8; P.trx = .5; P.hy = .78; P.lL = .6; P.lR = -.5; } }
@@ -459,6 +459,8 @@ function pose(f, dt) {
     else if (k === 'bow') { P.aLx = -2.4; P.aRx = -2.2; P.g = .3; P.trx = -.25; P.hdx = -.3; }
     else if (k === 'melee') { attackPose(P, u < .62 ? 0 : 1, u < .62 ? u / .62 : (u - .62) / .6, .62); P.fast = true; }
     else if (k === 'wave') { attackPose(P, 1, u / .85, .52); P.fast = true; }
+    else if (k === 'flip') { P.brx = -Math.min(1, u / .5) * Math.PI * 2; P.aLx = -1.5; P.aRx = -1.5; P.g = 0; P.lL = -1; P.lR = -1; P.hy = .8; P.fast = true; }
+    else if (k === 'rise') { attackPose(P, 4, u / .45, .25); P.fast = true; }
     else if (k === 'counter') { P.aRx = -2.4; P.g = -1.2; P.trx = -.1; P.lL = .4; P.lR = -.4; }
     else if (k === 'pray') { P.aRx = -2.8; P.aLx = -2.8; P.aLz = .2; P.aRz = -.2; P.g = -.2; P.hdx = -.3; P.hy = .9; }
     else { P.aRx = -2.8; P.g = .1; P.aLx = -.5; P.aLz = .4; P.trx = -.12; P.hdx = -.15; }

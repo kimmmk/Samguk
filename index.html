@@ -216,6 +216,17 @@ body.mc .ico img,body.mc .iv img,body.mc .sic img,body.mc .hk img,body.mc .tr im
 .tbtns button{width:56px;height:56px;border-radius:50%;border:1px solid rgba(255,243,207,.6);background:rgba(12,15,32,.55);color:var(--gold-hi);font:900 13px var(--serif);touch-action:none}
 @media (max-width:720px){.portrait{width:46px;height:46px;font-size:22px}#inv{margin-left:0}.top-c{top:calc(96px + env(safe-area-inset-top,0px))}#bossbar{top:calc(140px + env(safe-area-inset-top,0px))}.skillbar{bottom:calc(230px + env(safe-area-inset-bottom,0px))}#hot .hk{width:42px;height:42px}.sk2{width:56px;height:56px}#msgs{bottom:170px}}
 @media (prefers-reduced-motion:reduce){#go,#clearp{animation:none}}
+
+#hurtfx{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(220,20,20,.55) 100%)}
+#hurtfx.hit{animation:hurtf .45s ease-out}@keyframes hurtf{from{opacity:1}to{opacity:0}}
+#hurtfx.low:not(.hit){animation:hbeat 1s ease-in-out infinite}@keyframes hbeat{0%,100%{opacity:.15}15%{opacity:.7}30%{opacity:.25}45%{opacity:.6}}
+#lbox i{position:absolute;left:0;right:0;height:0;background:#000;transition:height .35s ease;pointer-events:none;z-index:4}#lbox i:first-child{top:0}#lbox i:last-child{bottom:0}#lbox.on i{height:11vh}
+#spfin{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font:900 clamp(60px,13vw,170px)/1 var(--serif);color:#fff;letter-spacing:.1em;text-shadow:0 0 40px var(--cc),0 0 90px var(--cc),0 6px 0 rgba(0,0,0,.6);z-index:5}
+#spfin.go{animation:spfin 1.5s cubic-bezier(.2,.8,.2,1) forwards}@keyframes spfin{0%{opacity:0;transform:scale(2.6) skewX(-12deg);filter:blur(8px)}18%{opacity:1;transform:scale(1) skewX(-6deg);filter:none}70%{opacity:1;transform:scale(1.04)}100%{opacity:0;transform:scale(1.2);filter:blur(4px)}}
+#spfin::after{content:"";position:absolute;left:-10%;right:-10%;top:50%;height:6px;background:linear-gradient(90deg,transparent,#fff,transparent);box-shadow:0 0 40px var(--cc);transform:rotate(-8deg) scaleX(0);animation:spcut 1.5s ease-out forwards}@keyframes spcut{20%{transform:rotate(-8deg) scaleX(0)}35%{transform:rotate(-8deg) scaleX(1)}100%{transform:rotate(-8deg) scaleX(1);opacity:0}}
+#cut-pt{position:absolute;right:6%;top:14%;width:min(42vw,420px);aspect-ratio:1;-webkit-mask:radial-gradient(circle,#000 55%,transparent 72%);mask:radial-gradient(circle,#000 55%,transparent 72%)}#cut-pt canvas{width:100%;height:100%}
+#cutin.go #cut-pt{animation:cutpt 1.8s cubic-bezier(.2,.8,.2,1)}@keyframes cutpt{from{opacity:0;transform:translateX(30%)}20%{opacity:1;transform:none}85%{opacity:1}to{opacity:0}}
+.dn.critl{color:#fff2a0;font-size:22px;letter-spacing:.1em;text-shadow:0 0 12px #ff9a2a,0 2px 0 #000}
 </style>
 
 <div id="app">
@@ -237,7 +248,8 @@ body.mc .ico img,body.mc .iv img,body.mc .sic img,body.mc .hk img,body.mc .tr im
     <button id="clearp" hidden>ENTER — 전리품을 챙겨 군영으로</button>
   </div>
   <div id="talk" hidden><div id="talk-pt"></div><div><div id="talk-who"></div><div id="talk-txt"></div></div><span id="talk-next"></span></div>
-  <div id="cutin" hidden><div id="cut-hz"></div><div id="cut-n"></div><div id="cut-s"></div></div>
+  <div id="hurtfx"></div><div id="lbox"><i></i><i></i></div><div id="spfin" hidden></div>
+<div id="cutin" hidden><div id="cut-pt" hidden></div><div id="cut-hz"></div><div id="cut-n"></div><div id="cut-s"></div></div>
   <div id="super" hidden></div>
   <div id="banner" hidden><small id="ban-a"></small><h2 id="ban-b"></h2><p id="ban-c"></p></div>
 
@@ -290,3 +302,4 @@ body.mc .ico img,body.mc .iv img,body.mc .sic img,body.mc .hk img,body.mc .tr im
 <script src="js/mc.js"></script>
 <script src="js/game.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/moves.js"></script>
