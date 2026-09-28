@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>스프라이트 베이커</title>
+<style>
+body{margin:0;background:#1a1410;color:#f0e0c0;font-family:'Malgun Gothic',sans-serif}
+#ui{padding:14px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:#2a1e14;border-bottom:1px solid #6a4a2a}
+button{background:#8a2a14;color:#fff;border:1px solid #ffd24a;padding:6px 14px;cursor:pointer;font-size:14px}
+label{font-size:13px}#log{padding:8px 18px;font-size:13px;white-space:pre-wrap;color:#c8e8b0}
+#prev{padding:0 18px 18px}#prev canvas{image-rendering:pixelated;border:1px solid #4a3a28;background:repeating-conic-gradient(#2a2420 0 25%,#1e1a16 0 50%) 0 0/16px 16px;max-width:100%}
+#c{display:none}
+</style></head>
+<body>
+<div id="ui">
+  <b>스프라이트 베이커</b>
+  <span>현재 게임의 무장 · 보스 · 병사를 규격에 맞는 레이어 시트로 뽑는다 — 샘플 데이터 · 도트 작업용 밑그림</span>
+  <label>대상 <select id="hero"></select></label>
+  <label>추가 무기 종류(무장만) <input id="wt" value="spear,sword,axe" size="18"></label>
+  <label><input type="checkbox" id="hits"> 타격 프레임으로 판정(useHits)</label>
+  <button id="go">굽기 + 저장</button><button id="all">전체 무장 굽기</button><button id="alle">전체 적 · 보스 굽기</button>
+  <span style="border-left:1px solid #6a4a2a;padding-left:12px">덧그린 시트 반영</span><button id="rp">아틀라스 갱신</button><button id="rpall">전체 아틀라스 갱신</button>
+</div>
+<div id="log"></div><div id="prev"></div>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>window.SPRITE_MANIFEST=[];</script>
+<script src="../js/core.js"></script><script src="../js/sound.js"></script><script src="../js/data.js"></script><script src="../js/rpgdata.js"></script>
+<script src="../js/model.js"></script><script src="../js/chibi.js"></script><script src="../js/sdart.js"></script><script src="../js/sdart2.js"></script><script src="../js/bg.js"></script><script src="../js/bghd.js"></script>
+<script src="../js/fx.js"></script><script src="../js/music.js"></script><script src="../js/rpg.js"></script><script src="../js/rpgui.js"></script><script src="../js/battle.js"></script>
+<script src="../js/stageev.js"></script><script src="../js/game.js"></script><script src="../js/hdicons.js"></script><script src="../js/vfx.js"></script><script src="../js/combat2.js"></script>
+<script src="../js/dnf.js"></script><script src="../js/sprite.js"></script>
+<script src="../sprites/manifest.js"></script>
+<script>
+/* ===== 스프라이트 베이커 =====
+   무장: 칸 328x312 · 기준점(발바닥 중앙) 164,236 · 시트 10열 · 레이어 back/body/weapon/front · 동작은 SPR_SPEC
+   병사: 칸 296x272 (기병 312x296) · 동작은 SPR_SPEC_E
+   보스: 1.5배로 굽는다(칸 432x360, 말 타는 보스 464x440) · 동작은 SPR_SPEC_E + 기마(_m)
+   칸 규격은 js/sprite.js 의 SPR_FRAME 과 같다. */
+const COLS=10,LAYERS=['back','body','weapon','front'];
+const $=id=>document.getElementById(id),log=t=>{$('log').textContent+=t+'\n'};
+/* 굽기 대상 목록 */
+const TARGETS=[];
+for(const h of HEROES)TARGETS.push({id:h.id,name:h.name,kind:'hero',look:h.look,h,grp:'무장'});
+for(const d of sprBossDefs()){const bid=SPR_BOSS[d.name];if(!bid)continue;const ph=BOSS_PHASES[d.name]||[];const m=ph.some(q=>q.enter==='mount')||!!d.look.mount;
+  TARGETS.push({id:'boss_'+bid,name:d.name,kind:m?'bossM':'boss',look:d.look,boss:true,mountable:m,grp:'보스'})}
+for(const f in SPR_FACN)for(const t in SPR_ETOK){const L=enemyLook(f,t);TARGETS.push({id:'en_'+f+'_'+t,name:SPR_FACN[f]+' '+SPR_ETOK[t],kind:ETYPES[t].cavalry?'cav':'foot',look:L,grp:'병사'})}
+{const grp={};for(const T of TARGETS){if(!grp[T.grp]){grp[T.grp]=document.createElement('optgroup');grp[T.grp].label=T.grp;$('hero').appendChild(grp[T.grp])}
+  const o=document.createElement('option');o.value=T.id;o.textContent=T.name+' ('+T.id+')';grp[T.grp].appendChild(o)}}
+/* 동작 · 프레임 → 게임 자세 */
+function poseFor(T,A,i,L){
+  const n=A.f,u=(i+.5)/n,h=T.h,e={look:L,h,isPlayer:T.kind==='hero',boss:!!T.boss,name:T.name,t:0,anim:0,combo:1,z:0,vz:0,jt:0,skill:'bolt'};
+  const S=(st,o)=>Object.assign(e,{state:st},o||{}),nm=A.n.replace(/_m$/,'');
+  switch(nm){
+    case'idle':S('idle',{anim:i*105/n});break;case'walk':S('walk',{anim:i*22.4/n});break;case'run':S(h?'run':'flee',{anim:i*14/n});break;
+    case'attack1':case'attack2':case'attack3':{const c=+nm.slice(-1),mv=h&&moveOf({h,look:L},'c'+c),dur=mv?mv.dur:h?(c===3?24:17):(T.boss?24:34);S('attack',{combo:c,t:Math.floor(u*dur)});break}
+    case'shoot':S('shoot',{t:Math.floor(u*34)});break;
+    case'jump':S('jump',{jatk:false,vz:i?-3:3});break;case'jatk':S('jump',{jatk:true,jt:Math.floor(u*10)});break;
+    case'cast':h?S('pskill',{skPose:'attack3',t:Math.floor(u*24)}):S('skill',{t:i*21/n});break;
+    case'hurt':S('hurt',{t:i*7});break;
+    case'fall':S('down',{z:30,t:Math.floor(u*20)});break;case'down':S('down',{z:0,t:60});break;
+    case'dodge':S('dodge',{dodgeBack:false,t:Math.floor(u*20)});break;case'backstep':S('dodge',{dodgeBack:true,t:Math.floor(u*20)});break;
+    case'stun':S('stun',{anim:i*42/n});break;
+    default:S(nm,{t:Math.floor(u*(A.dur||30))});
+  }
+  return poseOf(e);
+}
+function hitInfo(A,h,L){
+  if(!h||!/^attack\d$/.test(A.n))return null;const c=+A.n.slice(-1),mv=moveOf({h,look:L},'c'+c);if(!mv||!mv.hits||!mv.hits.length)return null;
+  const dur=mv.dur,a=mv.hits[0][0],b=mv.hits[mv.hits.length-1][1],o=mv.hits[mv.hits.length-1][2]||{};
+  return{from:Math.floor(a/dur*A.f),to:Math.min(A.f-1,Math.floor(b/dur*A.f)),knock:!!o.knock};
+}
+function newSheet(F,rows){const c=document.createElement('canvas');c.width=F[0]*COLS;c.height=F[1]*rows;return c}
+function bakeLayer(F,sheet,idx,L,pose,layer){
+  const [FW,FH,AX,AY,BS]=F,tmp=document.createElement('canvas');tmp.width=FW;tmp.height=FH;const tg=tmp.getContext('2d');
+  window.PIX_PR=1;let r;try{r=renderSD(tg,L,pose,AX,AY,BS,1,{layer})}finally{window.PIX_PR=0}
+  const g=sheet.getContext('2d');g.imageSmoothingEnabled=false;g.filter='url(#dotf)';g.drawImage(tmp,(idx%COLS)*FW,Math.floor(idx/COLS)*FH);g.filter='none';
+  return r;
+}
+/* 칸 가장자리에 그림이 닿은(잘렸을 수 있는) 칸 수 */
+function clipCount(F,sheet,n){const [FW,FH]=F,d=sheet.getContext('2d').getImageData(0,0,sheet.width,sheet.height).data,W2=sheet.width;let c=0;
+  const on=(x,y)=>d[(y*W2+x)*4+3]>8;
+  for(let k=0;k<n;k++){const ox=(k%COLS)*FW,oy=Math.floor(k/COLS)*FH;let hit=false;
+    for(let x=0;x<FW&&!hit;x++)hit=on(ox+x,oy)||on(ox+x,oy+FH-1);for(let y=0;y<FH&&!hit;y++)hit=on(ox,oy+y)||on(ox+FW-1,oy+y);if(hit)c++}
+  return c}
+/* 아틀라스: 칸마다 그림이 있는 부분만 잘라 촘촘히 모은 실행용 그림 → r[프레임]=[sx,sy,w,h,칸 안 x,칸 안 y] (빈 칸 null) */
+function makeAtlas(sheet,fw,fh,cols,n){
+  const W2=sheet.width,d=sheet.getContext('2d').getImageData(0,0,W2,sheet.height).data,boxes=[];
+  for(let k=0;k<n;k++){const ox=(k%cols)*fw,oy=Math.floor(k/cols)*fh;let x0=fw,x1=-1,y0=fh,y1=-1;
+    if(oy+fh<=sheet.height)for(let y=0;y<fh;y++){const row=((oy+y)*W2+ox)*4;for(let x=0;x<fw;x++)if(d[row+x*4+3]){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}}
+    boxes.push(x1<0?null:[x0,y0,x1-x0+1,y1-y0+1])}
+  const AW=2048,ord=boxes.map((b,k)=>k).filter(k=>boxes[k]).sort((a,b)=>boxes[b][3]-boxes[a][3]||a-b),r=new Array(n).fill(null);
+  let x=0,y=0,sh=0,mw=1;for(const k of ord){const [,,w,h]=boxes[k];if(x+w>AW){x=0;y+=sh+1;sh=0}r[k]=[x,y,w,h,boxes[k][0],boxes[k][1]];x+=w+1;mw=Math.max(mw,x);sh=Math.max(sh,h)}
+  const c=document.createElement('canvas');c.width=mw;c.height=Math.max(1,y+sh);const g=c.getContext('2d');
+  for(let k=0;k<n;k++)if(r[k]){const [ax,ay,w,h,bx,by]=r[k];g.drawImage(sheet,(k%cols)*fw+bx,Math.floor(k/cols)*fh+by,w,h,ax,ay,w,h)}
+  return{c,r}}
+async function saveAtlas(base,file,sheet,def,n){const A=makeAtlas(sheet,def.fw,def.fh,def.cols||COLS,n),af=file.replace(/\.png$/,'')+'.atlas.png';
+  await save(base+af,A.c.toDataURL('image/png'));(def.atlas=def.atlas||{})[file]={f:af,r:A.r};return A.c.width*A.c.height/(sheet.width*sheet.height)}
+const packFiles=def=>{const fs=new Set(Object.values(def.sheets||{}));for(const s in def.equip||{}){const E=def.equip[s];Object.values(E.byType||{}).forEach(f=>fs.add(f));(E.variants||[]).forEach(f=>fs.add(f));if(E.empty)fs.add(E.empty)}return[...fs].filter(Boolean)};
+const frameCount=def=>1+Math.max(...Object.values(def.anims).flatMap(a=>a.frames));
+const animHead=name=>'/* '+name+' 스프라이트 팩 — 스프라이트 베이커로 생성 ('+new Date().toLocaleString()+')\n   격자 시트(back.png 등)를 밑그림 삼아 도트를 덧그린 뒤 같은 이름으로 덮어쓰고, 베이커의 「아틀라스 갱신」을 누르면 게임에 반영된다.\n   (index.html?sprgrid 로 열면 아틀라스 갱신 전에도 격자 시트로 바로 확인 가능) */\n';
+/* 덧그린 격자 시트로 아틀라스 다시 만들기 */
+async function repack(id){
+  const t=await(await fetch('/sprites/'+id+'/anim.js?'+Date.now(),{cache:'no-store'})).text();let def=null;const R=window.SPR_REGISTER;
+  try{window.SPR_REGISTER=d=>{def=d};(0,eval)(t)}finally{window.SPR_REGISTER=R}
+  if(!def)throw new Error('anim.js 를 읽지 못함');
+  const base='sprites/'+id+'/',n=frameCount(def);def.atlas={};let ratio=0,cnt=0;
+  for(const f of packFiles(def)){const b=await(await fetch('/'+base+f+'?'+Date.now(),{cache:'no-store'})).blob();const bm=await createImageBitmap(b);
+    const c=document.createElement('canvas');c.width=bm.width;c.height=bm.height;c.getContext('2d').drawImage(bm,0,0);ratio+=await saveAtlas(base,f,c,def,n);cnt++}
+  await save(base+'anim.js',animHead(def.name||id)+'SPR_REGISTER('+JSON.stringify(def)+');\n');
+  log(`✔ ${def.name||id}: 아틀라스 갱신 — 시트 ${cnt}장 (격자 대비 ${Math.round(ratio/cnt*100)}% 크기)`);
+}
+async function save(path,data){const r=await fetch('/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path,data})});if(!r.ok)throw new Error(path+' 저장 실패 '+r.status)}
+async function bake(id){
+  const T=TARGETS.find(x=>x.id===id),hero=T.kind==='hero',F=SPR_FRAME[T.kind],[FW,FH,AX,AY,BS]=F;
+  const L=Object.assign({},T.look,{scale:1});delete L.spr;delete L.sprEq;if(T.boss)delete L.mount;
+  /* 동작 목록: 무장 SPR_SPEC · 적 SPR_SPEC_E (+ 말 타는 보스는 기마 동작 _m) */
+  const spec=hero?SPR_SPEC:SPR_SPEC_E.filter(A=>A.n!=='shoot'||L.weapon==='bow').map(A=>A.n==='attack1'?Object.assign({},A,{dur:T.boss?24:34}):A);
+  const list=spec.map(A=>({A,L}));
+  if(T.mountable){const LM=Object.assign({},L,{mount:'#b8321c'});for(const A of SPR_SPEC_E)if(SPR_SPEC_M.includes(A.n))list.push({A:Object.assign({},A,{n:A.n+'_m',dur:A.n==='attack1'?24:A.dur}),L:LM})}
+  const anims={},frames=[];let idx=0;
+  for(const {A,L:LL} of list){const fr=[];for(let i=0;i<A.f;i++){frames.push([A,i,LL]);fr.push(idx++)}
+    anims[A.n]={frames:fr};if(A.loop){anims[A.n].loop=true;anims[A.n].fps=A.fps}if(A.dur)anims[A.n].dur=A.dur;const hi=hitInfo(A,T.h,LL);if(hi)anims[A.n].hit=hi}
+  const rows=Math.ceil(idx/COLS),sheets={},tips=[];
+  for(const lay of LAYERS)sheets[lay]=newSheet(F,rows);
+  const wts=hero?$('wt').value.split(',').map(s=>s.trim()).filter(s=>s&&s!==T.look.weapon):[],wsh={};for(const t of wts)wsh[t]=newSheet(F,rows);
+  frames.forEach(([A,i,LL],k)=>{const pose=poseFor(T,A,i,LL);
+    for(const lay of LAYERS){const r=bakeLayer(F,sheets[lay],k,LL,pose,lay);if(lay==='weapon')tips[k]=[Math.round(r.tx-AX),Math.round(r.ty-AY)]}
+    for(const t of wts)bakeLayer(F,wsh[t],k,Object.assign({},LL,{weapon:t,dual:false}),pose,'weapon')});
+  const base='sprites/'+id+'/',files={back:'back.png',body:'body.png',weapon:'weapon.png',front:'front.png'};
+  let clip=0;for(const lay of LAYERS)clip=Math.max(clip,clipCount(F,sheets[lay],idx));
+  for(const lay of LAYERS)await save(base+files[lay],sheets[lay].toDataURL('image/png'));
+  const def={id,name:T.name,fw:FW,fh:FH,cols:COLS,anchor:[AX,AY],scale:+(1/BS).toFixed(4),layers:LAYERS,sheets:files};
+  if(hero){const byType={default:'weapon.png'};byType[T.look.weapon]='weapon.png';
+    for(const t of wts){await save(base+'weapon_'+t+'.png',wsh[t].toDataURL('image/png'));byType[t]='weapon_'+t+'.png'}
+    def.useHits=$('hits').checked;def.equip={weapon:{layer:'weapon',byType,recolor:true}}}
+  def.anims=anims;def.tips=tips;
+  let ratio=0;for(const lay of LAYERS)ratio+=await saveAtlas(base,files[lay],sheets[lay],def,idx);
+  for(const t of wts)await saveAtlas(base,'weapon_'+t+'.png',wsh[t],def,idx);
+  await save(base+'anim.js',animHead(T.name)+'SPR_REGISTER('+JSON.stringify(def)+');\n');
+  const man=[...new Set((window.SPRITE_MANIFEST||[]).concat([id]))];window.SPRITE_MANIFEST=man;
+  await save('sprites/manifest.js','/* 사용할 스프라이트 팩 목록 — sprites/<id>/anim.js 를 불러온다 (스프라이트 베이커가 자동 갱신) */\nwindow.SPRITE_MANIFEST='+JSON.stringify(man)+';\n');
+  log(`✔ ${T.name}: ${idx}프레임 · 칸 ${FW}x${FH}${BS!==1?' ('+BS+'배)':''} · 레이어 ${LAYERS.length}장${wts.length?' + 무기 '+wts.length+'종':''} · 아틀라스 ${Math.round(ratio/LAYERS.length*100)}% → ${base}`+(clip?`  ⚠ 칸 가장자리에 닿은 프레임 ${clip}개 (잘렸을 수 있음)`:''));
+  const pv=document.createElement('div');pv.innerHTML=`<p>${T.name} — body 레이어 미리보기</p>`;const c=sheets.body;c.style.width=(c.width/(BS>1?3:2))+'px';pv.appendChild(c);$('prev').prepend(pv);
+  while($('prev').children.length>4)$('prev').lastChild.remove();
+}
+const run=async ids=>{for(const id of ids){try{await bake(id)}catch(e){log('✘ '+id+': '+e.message)}}log('— 끝 —')};
+$('go').onclick=()=>run([$('hero').value]);
+$('all').onclick=()=>run(TARGETS.filter(T=>T.kind==='hero').map(T=>T.id));
+$('alle').onclick=()=>run(TARGETS.filter(T=>T.kind!=='hero').map(T=>T.id));
+const runR=async ids=>{for(const id of ids){try{await repack(id)}catch(e){log('✘ '+id+': '+e.message)}}log('— 끝 —')};
+$('rp').onclick=()=>runR([$('hero').value]);
+$('rpall').onclick=()=>runR(window.SPRITE_MANIFEST||[]);
+window.bake=bake;window.repack=repack;window.bakeHero=bake;window.TARGETS=TARGETS;
+</script>
+</body></html>

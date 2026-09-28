@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>캐릭터 갤러리</title>
+<style>
+body{margin:0;background:#20242c;color:#eee;font-family:'Malgun Gothic',sans-serif}
+#ui{padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#2c313b}
+#c{display:none}#out{display:block;margin:0 auto;background:linear-gradient(#5a7090,#8aa0b8 60%,#6a7a60 60%)}
+select,button{font-size:14px}
+</style></head>
+<body>
+<div id="ui"><b>캐릭터 갤러리</b>
+  <label>보기 <select id="mode"><option value="heroes">무장 전체</option><option value="bosses">보스 전체</option><option value="troops">병사 (세력별)</option><option value="poses">한 무장 동작</option></select></label>
+  <label>무장 <select id="hero"></select></label>
+  <label>배율 <select id="zoom"><option>1</option><option selected>2</option><option>3</option></select></label>
+</div>
+<canvas id="out" width="1600" height="900"></canvas>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>window.SPRITE_MANIFEST=[];</script>
+<script src="../js/core.js"></script><script src="../js/sound.js"></script><script src="../js/data.js"></script><script src="../js/rpgdata.js"></script>
+<script src="../js/model.js"></script><script src="../js/chibi.js"></script><script src="../js/sdart.js"></script><script src="../js/sdart2.js"></script><script src="../js/bg.js"></script><script src="../js/bghd.js"></script>
+<script src="../js/fx.js"></script><script src="../js/music.js"></script><script src="../js/rpg.js"></script><script src="../js/rpgui.js"></script><script src="../js/battle.js"></script>
+<script src="../js/stageev.js"></script><script src="../js/game.js"></script><script src="../js/hdicons.js"></script><script src="../js/vfx.js"></script><script src="../js/combat2.js"></script>
+<script>
+/* 코드로 그린 캐릭터를 크게 늘어놓고 보는 확인용 페이지 */
+const $=id=>document.getElementById(id),O=$('out'),g=O.getContext('2d');
+HEROES.forEach((h,i)=>{const o=document.createElement('option');o.value=i;o.textContent=h.name;$('hero').appendChild(o)});
+const BOSSL=()=>[MIDBOSS].concat(STAGES.filter(s=>s.boss).map(s=>s.boss));
+let T=0;
+function ent(look,h,st,o){return Object.assign({look,h,isPlayer:!!h,state:st,t:0,anim:T,combo:1,z:0,vz:0,jt:0},o||{})}
+function draw(){
+  const z=+$('zoom').value,m=$('mode').value;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,O.width,O.height);
+  const items=[];
+  if(m==='heroes')HEROES.forEach(h=>items.push([h.look,h,'idle',{},h.name]));
+  if(m==='bosses')BOSSL().forEach(b=>items.push([b.look,null,'idle',{},b.name]));
+  if(m==='troops')for(const f of ['yellow','dong','wei','yuan'])for(const t of ['s','sp','a','o','sh','fl'])items.push([enemyLook(f,t),null,'idle',{},f+' '+t]);
+  if(m==='poses'){const h=HEROES[+$('hero').value];
+    [['idle'],['walk'],['run'],['attack',{combo:1,t:6}],['attack',{combo:2,t:8}],['attack',{combo:3,t:10}],['jump',{jatk:true,jt:5}],['special',{t:20}],['hurt'],['down',{t:60}],['win'],['dodge',{t:8}]]
+      .forEach(([st,o])=>items.push([h.look,h,st,o||{},st]))}
+  const cols=m==='troops'?6:6,cw=O.width/cols,rh=(m==='troops'?150:300)*z/2;
+  O.height=Math.max(900,Math.ceil(items.length/cols)*rh+40);
+  items.forEach(([L,h,st,o,name],i)=>{const x=cw*(i%cols)+cw/2,y=Math.floor(i/cols)*rh+rh-30;
+    const e=ent(L,h,st,o);const k=(L.scale||1)*(h?1:1);renderModel(g,L,poseOf(e),x,y,z*(m==='bosses'?1.3:1),1,{});
+    g.fillStyle='#fff';g.font='13px Malgun Gothic';g.textAlign='center';g.fillText(name,x,y+20)});
+}
+let live=true;
+function loop(){if(!live)return;T++;draw();requestAnimationFrame(loop)}
+/* 확인용: show([[look,hero,state,옵션],...], 배율, 열 수, 칸 높이) — 멈춘 화면에 크게 그린다 */
+window.show=(items,z,cols,rh)=>{live=false;$('ui').style.display='none';O.width=cols*110*z;O.height=Math.ceil(items.length/cols)*rh*z;O.style.width='100%';
+  g.setTransform(1,0,0,1,0,0);g.fillStyle='#7d90a8';g.fillRect(0,0,O.width,O.height);
+  items.forEach(([L,h,st,o],i)=>{const x=(i%cols+.5)*110*z,y=(Math.floor(i/cols)+1)*rh*z-12*z;renderModel(g,L,poseOf(ent(L,h,st,Object.assign({anim:40},o||{}))),x,y,z,1,{})});return'ok'};
+['mode','hero','zoom'].forEach(id=>$(id).onchange=draw);loop();
+window.drawGallery=draw;
+</script>
+</body></html>
