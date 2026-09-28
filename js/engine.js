@@ -448,7 +448,7 @@ function pose(f, dt) {
   else if (s === 'hurt' || s === 'stun' || s === 'grabbed') { P.trx = -.35; P.hdx = -.3; P.aRx = -.15; P.aLx = -.1; P.aRz = -.5; P.aLz = .5; P.hy = .92; if (s === 'stun') P.hdx = -.3 + Math.sin(t * 6) * .2; }
   else if (s === 'down') { const k = Math.min(1, u * 5); P.brx = -Math.PI / 2 * k; P.by = .18 * k; P.aRz = -1.3; P.aLz = 1.3; P.aRx = -.2; P.lL = .3; P.lR = -.1; P.fast = true; }
   else if (s === 'getup') { const k = clamp(u / .4, 0, 1); P.brx = -Math.PI / 2 * (1 - easeOut(k)); P.by = .18 * (1 - k); P.fast = true; }
-  else if (s === 'dodge') { const k = clamp(u / .36, 0, 1); if (f.backstep) { P.trx = -.3; P.lL = -.5; } else { P.brx = k * Math.PI * 2 * (f.rollDir || 1); P.hy = .6; P.lL = -1.2; P.lR = -1.2; P.aRx = -1; P.aLx = -1; P.fast = true; } }
+  else if (s === 'dodge' || s === 'airdodge') { const k = clamp(u / .36, 0, 1); if (f.backstep) { P.trx = -.3; P.lL = -.5; } else { P.brx = k * Math.PI * 2 * (f.rollDir || 1); P.hy = .6; P.lL = -1.2; P.lR = -1.2; P.aRx = -1; P.aLx = -1; P.fast = true; } }
   else if (s === 'spin') { P.bry = u * 20; P.aRx = -1.45; P.g = 1.45; P.aRz = -.55; P.hy = .88; P.lL = .4; P.lR = -.4; P.fast = true; }
   else if (s === 'item') { P.aRx = -2.2; P.g = -1; }
   else if (s === 'special' || s === 'skill' || s === 'cast' || s === 'xcmd') {

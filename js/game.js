@@ -529,6 +529,7 @@ function updatePlayer(p, dt) {
   if (p.dead) { if (p.downLand) p.deathT += dt; if (p.deathT > 1.4) playerDeath(p); return; }
   const ax = axis(), spdMul = (p.buf.haste > 0 ? 1.5 : 1) * (p.slowT > 0 ? .6 : 1), sp = S.spd * 60 * PX * spdMul;
   const canAct = ['idle', 'walk', 'run'].includes(p.state);
+  if (dodgeExtra(p, ax)) return; if (chargeTick(p, dt)) return;
   /* 회피 */
   if (hit('dodge') && p.dodgeCd <= 0 && (p.y || 0) < .05 && ['idle', 'walk', 'run', 'attack', 'item'].includes(p.state)) {
     setState(p, 'dodge'); p.dodgeCd = 34 / 60; p.invuln = 18 / 60; p.perfDone = false; sfx('dodge');
@@ -560,10 +561,10 @@ function updatePlayer(p, dt) {
       break; }
     case 'jump':
       p.vx = ax.x * sp * .9; p.vz = ax.z * sp * .55; if (Math.abs(ax.x) > .15 && !p.airAtk) p.facing = Math.sign(ax.x);
-      if (hit('atk') && !p.airAtk && p.fear <= 0) { if (W.t - p.jumpT < .09) { if (tryspin(p)) break; } p.airAtk = true; p.airT = 0; p.hitIds.clear(); slash(p, 'chop', p.h.fx, { h: .9, s: reachOf(p) / 2.7, follow: true }); sfx('swing'); }
-      if (p.airAtk) { p.airT += dt; if (p.airT > .07 && p.airT < .3) meleeP(p, { reach: reachOf(p) * .9, dz: 1, dmg: pOf(p, 'basic') * 1.2 * 1.6, kb: 4, knock: true }); }
+      airAttack(p, dt);
       break;
     case 'attack': case 'dashatk': case 'launch':
+      if (comboCancel(p)) break;
       if (hit('sp') && p.st > p.atkDur * .4) { startSpecial(p, held('up')); break; }
       tickAttack(p, dt); break;
     case 'cmd': tickCmd(p, dt); break;
@@ -573,7 +574,8 @@ function updatePlayer(p, dt) {
     case 'special': tickSpecial(p, dt); break;
     case 'cast': tickCast(p, dt); break;
     case 'item': p.vx = 0; if (p.st > .35) setState(p, 'idle'); break;
-    case 'dodge': p.vx *= Math.exp(-dt * 3); p.vz *= Math.exp(-dt * 3);
+    case 'airdodge': tickAirDodge(p, dt); break;
+    case 'dodge': if (hit('atk') && p.st > .06) { dodgeCounter(p); break; } p.vx *= Math.exp(-dt * 3); p.vz *= Math.exp(-dt * 3);
       if (p.st > 22 / 60) { setState(p, 'idle'); p.vx = p.vz = 0; } break;
     case 'hurt': p.vx *= Math.exp(-dt * 7); p.vz = 0; if (p.st > 14 / 60) setState(p, 'idle'); break;
     case 'grabbed': p.vx = p.vz = 0; if (hit('atk') || hit('jump')) { p.mash++; W.shake = .08; } break;
@@ -865,7 +867,7 @@ function updLoot(dt) {
 function pickLoot(p, L) {
   const P = p.P, R = P.rpg;
   if (L.kind === 'gear') { const bagN = R.bag.filter(b => b.g === L.item.g).length; if (bagN >= 100) { const y = dismantleYield(L.item); R.mats.stone += y.stone; R.mats.frag += y.frag; UI.msg(`가방이 가득 차 자동 분해: ${L.item.n}`); }
-    else { R.bag.push(L.item); UI.msg(`<img class="mi" src="${itemIcon(L.item)}" alt=""><span style="color:${GRADES[L.item.g].c}">${L.item.n}</span> 획득${canWear(P, L.item) ? '' : ' <span class="bad">(착용 불가)</span>'}`); } sfx('gear'); }
+    else { R.bag.push(L.item); UI.msg(`<img class="mi" src="${itemIcon(L.item)}" alt=""><span style="color:${GRADES[L.item.g].c}">${L.item.n}</span> 획득${canWear(P, L.item) ? '' : ' <span class="bad">(착용 불가)</span>'}`); if (isRecommended(P, L.item)) UI.msg('▲ 추천 장비 획득 — 캐릭터 창(Tab) · 장비 추천에서 확인'); } sfx('gear'); }
   else if (L.kind === 'coin') { R.gold += L.v; UI.dmg(p.x, 2.4, p.z, `+${L.v}`, 'gold'); sfx('pick'); }
   else if (L.kind === 'mat') { R.mats[L.m] += L.v; UI.dmg(p.x, 2.4, p.z, `${L.m === 'stone' ? '강화석' : '비급 조각'} +${L.v}`, 'heal'); sfx('pick'); }
   else if (L.kind === 'food') { const k = L.k, I = ITEMS[k];

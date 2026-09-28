@@ -171,6 +171,19 @@ function recommendEquip(P) {
     if (!best) break; equip(P, best[0], best[1]); changed++; }
   return changed;
 }
+/* ---------- 장비 추천: 기본 옵션(공격/방어)이 같거나 높고 전투력이 오르는 장비 ---------- */
+function baseMain(it) { if (!it) return 0; const b = itemBase(it); return it.s === 'weapon' ? b.atk : b.def; }
+function recGain(P, it, sl) {
+  const R = P.rpg, old = R.eq[sl]; if (!canWear(P, it) || it.s !== (sl.startsWith('ring') ? 'ring' : sl)) return 0;
+  if (old && canWear(P, old) && baseMain(it) < baseMain(old)) return 0;
+  const base = power(P); R.eq[sl] = it; const g = power(P) - base; if (old) R.eq[sl] = old; else delete R.eq[sl]; return g > .5 ? Math.round(g) : 0;
+}
+function recsFor(P) {
+  const out = {};
+  for (const sl of EQ_SLOTS) { const list = []; for (const it of P.rpg.bag) { const g = recGain(P, it, sl); if (g) list.push({ it, gain: g }); } if (list.length) out[sl] = list.sort((a, b) => b.gain - a.gain); }
+  return out;
+}
+function isRecommended(P, it) { return EQ_SLOTS.some(sl => recGain(P, it, sl) > 0); }
 /* ---------- 드랍 ---------- */
 function rollDrops(e, S) {
   const out = [], L = e.lv || 1, mf = S.mf || 0, dr = DIFFS[G.diffIdx].drop;

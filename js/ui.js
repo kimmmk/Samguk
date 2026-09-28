@@ -197,36 +197,41 @@ const UI = (() => {
   function closeModal() { modal = null; show('#panel', false); tipHide(); if (SCENE === 'camp' && G) { renderCamp(); afterGearSoft(); } if (SCENE === 'battle' && B) { refreshStats(B.p); rebuildPlayerModel(); renderHot(); } }
   $('#p-close').onclick = () => { sfx('ui'); closeModal(); };
   /* ---------- 캐릭터 창 ---------- */
-  let charTab = 'equip', gradeTab = 'all', bagPage = 0, selItem = null, slotFilter = null, smithSel = null;
+  let recOn = false, charTab = 'equip', gradeTab = 'all', bagPage = 0, selItem = null, slotFilter = null, smithSel = null;
   function openChar(tab) { charTab = tab || charTab; openModal('캐릭터', '<div class="ctabs" id="ctabs"></div><div id="cbody"></div>', 'wide'); renderChar(); }
   function renderChar() {
     const inCamp = SCENE === 'camp', tabs = [['equip', '장비'], ['skill', '스킬'], ['stat', '능력치'], ...(inCamp ? [['smith', '대장간']] : []), ['sys', '시스템']];
     if (!inCamp && charTab === 'smith') charTab = 'equip';
-    const R = G.pl.rpg; $('#ctabs').innerHTML = tabs.map(([k, n]) => `<button class="${k === charTab ? 'on' : ''}" data-k="${k}">${n}${k === 'skill' && R.skillPts ? ` <em>${R.skillPts}</em>` : ''}${k === 'stat' && R.statPts ? ` <em>${R.statPts}</em>` : ''}</button>`).join('');
+    const R = G.pl.rpg, anyRec = Object.keys(recsFor(G.pl)).length; $('#ctabs').innerHTML = tabs.map(([k, n]) => `<button class="${k === charTab ? 'on' : ''}" data-k="${k}">${n}${k === 'equip' && anyRec ? ' <em class="recdot">▲</em>' : ''}${k === 'skill' && R.skillPts ? ` <em>${R.skillPts}</em>` : ''}${k === 'stat' && R.statPts ? ` <em>${R.statPts}</em>` : ''}</button>`).join('');
     $('#ctabs').querySelectorAll('button').forEach(b => b.onclick = () => { charTab = b.dataset.k; sfx('ui'); renderChar(); });
     ({ equip: renderEquip, skill: renderSkill, stat: renderStat, smith: renderSmith, sys: renderSys })[charTab]();
   }
   const icon = (it, extra = '') => { if (!it) return ''; const G0 = GRADES[it.g], mk = it.set && SET_MARK[it.set];
     return `<div class="ico ${extra} ${G.pl && !canWear(G.pl, it) ? 'bad' : ''}" style="--gc:${G0.c}" data-slot="${slotType(it.s)}"><img src="${itemIcon(it)}" alt="${esc(it.n)}" draggable="false">${it.e ? `<i>+${it.e}</i>` : ''}${mk ? `<u style="color:${mk[1]}">${mk[0]}</u>` : ''}${it.nw ? '<s>NEW</s>' : ''}${it.lk ? '<em>🔒</em>' : ''}${G.pl && !canWear(G.pl, it) ? `<small>${it.h && it.h !== heroOf().id ? '전용' : 'Lv.' + it.rq}</small>` : ''}</div>`; };
   function renderEquip() {
-    const P = G.pl, R = P.rpg, inCamp = SCENE === 'camp';
-    const eqHtml = EQ_SLOTS.map(sl => { const it = R.eq[sl]; return `<button class="eqs ${slotFilter === sl ? 'on' : ''}" data-sl="${sl}"><span>${SLOTS[slotType(sl)].n}</span>${it ? icon(it) : `<div class="ico empty"><img src="${slotIcon(sl)}" alt="" draggable="false"></div>`}</button>`; }).join('');
-    let bag = R.bag.slice(); if (gradeTab !== 'all') bag = bag.filter(b => b.g === gradeTab); if (slotFilter) bag = bag.filter(b => b.s === slotType(slotFilter));
-    bag.sort((a, b) => GRADES[b.g].rank - GRADES[a.g].rank || b.il - a.il);
+    const P = G.pl, R = P.rpg, inCamp = SCENE === 'camp', RC = recsFor(P), recN = Object.keys(RC).length; if (!recN) recOn = false;
+    const eqHtml = EQ_SLOTS.map(sl => { const it = R.eq[sl], rc = recOn && RC[sl]; return `<button class="eqs ${slotFilter === sl ? 'on' : ''} ${rc ? 'rec' : ''}" data-sl="${sl}"><span>${SLOTS[slotType(sl)].n}</span>${it ? icon(it) : `<div class="ico empty"><img src="${slotIcon(sl)}" alt="" draggable="false"></div>`}${rc ? `<b class="recb">▲${rc.length}</b>` : ''}</button>`; }).join('');
+    const gainOf = new Map(); let bag;
+    if (recOn && slotFilter) { bag = (RC[slotFilter] || []).map(r => (gainOf.set(r.it, r.gain), r.it)); if (gradeTab !== 'all') bag = bag.filter(b => b.g === gradeTab); }
+    else { bag = R.bag.slice(); if (gradeTab !== 'all') bag = bag.filter(b => b.g === gradeTab); if (slotFilter) bag = bag.filter(b => b.s === slotType(slotFilter));
+      bag.sort((a, b) => GRADES[b.g].rank - GRADES[a.g].rank || b.il - a.il); }
+    const recHint = recOn ? `<div class="rechint">${slotFilter ? (RC[slotFilter] ? `▲ 추천 장비 — ${SLOTS[slotType(slotFilter)].n} ${RC[slotFilter].length}개 · 전투력 증가 순` : `${SLOTS[slotType(slotFilter)].n}: 추천할 장비가 없습니다`) : '▲ 표시된 부위를 선택하면 추천 장비가 표시됩니다'}</div>` : '';
     const per = 40, pages = Math.max(1, Math.ceil(bag.length / per)); bagPage = clamp(bagPage, 0, pages - 1);
     const gt = ['all', ...GRADE_ORDER].map(g => `<button class="${g === gradeTab ? 'on' : ''}" data-g="${g}" style="${g !== 'all' ? `color:${GRADES[g].c}` : ''}">${g === 'all' ? '전체' : GRADES[g].n}${R.bag.some(b => b.nw && (g === 'all' || b.g === g)) ? '<i class="dot"></i>' : ''}</button>`).join('');
     $('#cbody').innerHTML = `<div class="eqwrap"><div class="eqleft"><div class="pw">전투력 <b>${power(P).toLocaleString('ko-KR')}</b> <small class="dim">드래그로 회전 · 칸에 올리면 해당 부위 표시</small></div><div class="pvbox" id="pvbox"></div><div class="eqgrid">${eqHtml}</div>
-      <div class="row"><button class="btn" id="b-rec">추천 장착</button>${slotFilter ? '<button class="btn ghost" id="b-unf">부위 필터 해제</button>' : ''}</div>
+      <div class="row"><button class="btn ${recOn ? '' : 'ghost'} recbtn" id="b-recv" ${recN ? '' : 'disabled'}>${recOn ? '추천 끄기' : recN ? '장비 추천' : '추천 장비 없음'}${recN ? ` <em>${recN}부위</em>` : ''}</button><button class="btn ghost" id="b-rec">일괄 추천 장착</button>${slotFilter ? '<button class="btn ghost" id="b-unf">부위 필터 해제</button>' : ''}</div>
       <div class="gold">금화 ${R.gold.toLocaleString('ko-KR')} · 강화석 ${R.mats.stone} · 비급 조각 ${R.mats.frag}</div></div>
-      <div class="eqright"><div class="gtabs">${gt}</div><div class="bag">${bag.slice(bagPage * per, bagPage * per + per).map(it => `<button class="bs ${selItem === it ? 'on' : ''}" data-id="${it.id}">${icon(it)}</button>`).join('') || '<p class="dim">비어 있음</p>'}</div>
+      <div class="eqright"><div class="gtabs">${gt}</div>${recHint}<div class="bag">${bag.slice(bagPage * per, bagPage * per + per).map(it => `<button class="bs ${selItem === it ? 'on' : ''}" data-id="${it.id}">${icon(it)}${gainOf.has(it) ? `<span class="gain">+${gainOf.get(it).toLocaleString('ko-KR')}</span>` : ''}</button>`).join('') || '<p class="dim">비어 있음</p>'}</div>
       <div class="row pg"><button class="btn ghost" id="b-prev">◀</button><span>${bagPage + 1} / ${pages} · ${bag.length}개</span><button class="btn ghost" id="b-next">▶</button>
       ${gradeTab !== 'all' ? `<button class="btn ghost" id="b-bdis">${GRADES[gradeTab].n} 일괄 분해</button>${inCamp ? `<button class="btn ghost" id="b-bsell">${GRADES[gradeTab].n} 일괄 판매</button>` : ''}` : ''}</div>
       <div class="itemact" id="itemact"></div></div></div>`;
     pvMount($('#pvbox'));
-    $('#cbody').querySelectorAll('.eqs').forEach(b => { b.onclick = () => { const sl = b.dataset.sl; if (slotFilter === sl && R.eq[sl]) { selItem = R.eq[sl]; } slotFilter = slotFilter === sl ? null : sl; renderEquip(); showItemAct(R.eq[sl], sl); };
+    $('#cbody').querySelectorAll('.eqs').forEach(b => { b.onclick = () => { const sl = b.dataset.sl; if (slotFilter === sl && R.eq[sl]) { selItem = R.eq[sl]; } slotFilter = slotFilter === sl ? null : sl; bagPage = 0;
+        if (recOn && slotFilter && RC[sl]) { selItem = RC[sl][0].it; renderEquip(); showItemAct(selItem); return; } renderEquip(); showItemAct(R.eq[sl], sl); };
       b.onmouseenter = e => { pvHighlight(slotType(b.dataset.sl)); if (R.eq[b.dataset.sl]) tipShow(R.eq[b.dataset.sl], e); }; b.onmouseleave = () => { tipHide(); pvHighlight(slotFilter ? slotType(slotFilter) : null); }; });
     $('#cbody').querySelectorAll('.bs').forEach(b => { const it = R.bag.find(x => x.id === +b.dataset.id); b.onclick = () => { selItem = it; it.nw = false; renderEquip(); showItemAct(it); }; b.onmouseenter = e => { pvHighlight(slotType(it.s)); tipShow(it, e, true); }; b.onmouseleave = () => { tipHide(); pvHighlight(null); }; });
     $('#cbody').querySelectorAll('.gtabs button').forEach(b => b.onclick = () => { gradeTab = b.dataset.g; bagPage = 0; renderEquip(); });
+    $('#b-recv').onclick = () => { recOn = !recOn; slotFilter = null; bagPage = 0; sfx('ui'); if (recOn) { const first = EQ_SLOTS.find(s => RC[s]); if (first) pvHighlight(slotType(first)); } renderEquip(); };
     $('#b-rec').onclick = () => { const n = recommendEquip(P); msg(n ? `추천 장착 — ${n}개 교체` : '이미 최적의 장착입니다'); sfx(n ? 'gear' : 'ui'); afterGear(); };
     if ($('#b-unf')) $('#b-unf').onclick = () => { slotFilter = null; renderEquip(); };
     $('#b-prev').onclick = () => { bagPage--; renderEquip(); }; $('#b-next').onclick = () => { bagPage++; renderEquip(); };
