@@ -1,0 +1,33 @@
+{
+ "flip": {
+  "fan": true,
+  "axe": true,
+  "whip": true
+ },
+ "pick": {
+  "en_o": "b_en_o_31.png",
+  "en_s": "b_en_s_31.png",
+  "b_xiahoudun": "b_b_xiahoudun_31.png",
+  "huang": "b_huang_31.png"
+ },
+ "mirror": [
+  "guan",
+  "zhang",
+  "zhuge",
+  "ma",
+  "diao",
+  "wei",
+  "lubu",
+  "xu",
+  "gan",
+  "sun",
+  "en_a",
+  "en_o",
+  "b_xiahouen",
+  "b_zhangjiao",
+  "b_xuchu",
+  "b_caocao",
+  "b_simayi",
+  "b_yanliang"
+ ]
+}

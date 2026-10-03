@@ -1,0 +1,2 @@
+/* 그랑풍 부품 팩 목록 — sprite_ai/grand/grand_parts_all.py 가 자동 생성 */
+window.GRAND_MANIFEST=["b_caocao", "b_pangde", "b_simayi", "b_xiahoudun", "b_xiahouen", "b_xiahouyuan", "b_xuchu", "b_yanliang", "b_zhangjiao", "b_zhangliao", "diao", "dong_a", "dong_fl", "dong_o", "dong_s", "dong_sh", "dong_sp", "gan", "guan", "huang", "lubu", "ma", "sun", "wei", "wei_a", "wei_fl", "wei_o", "wei_s", "wei_sh", "wei_sp", "xu", "yellow_a", "yellow_fl", "yellow_o", "yellow_s", "yellow_sh", "yellow_sp", "yuan_a", "yuan_fl", "yuan_o", "yuan_s", "yuan_sh", "yuan_sp", "zhang", "zhao", "zhuge"];
