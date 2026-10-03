@@ -39,10 +39,11 @@ venv\Scripts\python -m pip install -r requirements.txt
 - 보스는 원화 4px = 도트 1px(무장 · 병사는 5px)로 촘촘하게 만들고, 팩 배율로 크기를 맞춥니다.
 - `build_pack2.py`의 `GAME` 경로는 도트 에디션 폴더 위치로 맞춥니다.
 
-## 이어서 할 일 (보류 중)
+## 관우 (guan3)
 
-- **관우 3차 생성**: 2차(`guan2`)는 몸 동작은 커졌지만 등 뒤에 두 번째 칼이 그려져 게임 팩에는 1차(`guan`)를 쓰고 있습니다. 등 뒤 무기를 억제한 3차 설정(`guan3`)이 `jobs.py`에 있습니다.
-  `venv\Scripts\python animgen.py guan3` → 결과 확인 → `venv\Scripts\python build_pack2.py hero:guan3=guan`
+- 1차(`guan`)는 몸 동작이 작고, 2차(`guan2`)는 등 뒤에 두 번째 칼이 그려져, 3차(`guan3`)를 게임 팩에 씁니다.
+- LoRA 가 모자 위 장식(세운 칼날 · 술)을 외형으로 익혀서, 변환할 때 코보다 125px 위를 잘라 냅니다(`trim_head`). 실제 머리 꼭대기는 이미지에서 찾아 그 아래는 자르지 않고, 잘린 뒤 떠 있는 조각은 지웁니다.
+- 다시 만들 때: `venv\Scripts\python animgen.py guan3` → `venv\Scripts\python build_pack2.py hero:guan3=guan`
 - 생성은 프레임마다 저장되므로, 도중에 멈춰도 같은 명령을 다시 실행하면 이미 만든 프레임은 건너뛰고 이어서 합니다.
 - 기병(말 탄 병사)과 여포 · 안량의 기마 구간은 AI 팩이 없어 코드 그림(부드러운 도트 필터)을 씁니다.
 

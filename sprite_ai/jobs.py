@@ -54,3 +54,4 @@ JOBS['boss_zhangliao']['cut_tol'] = 48   # 기준 그림 배경이 고르지 않
 # 관우 3차: 등 뒤 두 번째 무기 · 머리 위 장식 억제
 JOBS['guan3'] = dict(JOBS['guan2'], id='guan3', lora_w=.6, ip=.22, cs=1.35,
                      neg_extra='sword on back, blade on back, weapon on back, second weapon, tall hat, pole above head, feather, plume')
+JOBS['guan3']['trim_head'] = 125   # 머리 위 장식을 후처리로 잘라 낸다 (animgen 참고)

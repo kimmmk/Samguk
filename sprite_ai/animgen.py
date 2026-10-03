@@ -85,6 +85,22 @@ def run(job, p=None):
     for an, poses in anims.items():
         for i, pose in enumerate(poses):
             char = D.cutout(Image.open(os.path.join(out, f'{an}_{i}_hd.png')), job.get('cut_tol', 30))
+            if job.get('trim_head'):
+                # 머리 위로 솟은 장식(LoRA 가 외형으로 익힌 모자 술 · 세운 칼날)을 코보다 trim_head px 위로 전부 잘라 낸다.
+                # 머리 위로 든 손은 코보다 약 100px 위까지라 남는다. 무기는 이 뒤에 합성하므로 영향 없음.
+                kp = D.fk(pose); nx, ny = kp[0]; lim = int(ny - job['trim_head'])
+                # 실제 머리 꼭대기: 머리 주변에서 폭 30px 이상이 25줄 넘게 이어지기 시작하는 줄 — 그보다 아래는 자르지 않는다
+                win = (char[:, max(0, int(nx - 90)):int(nx + 80), 3] > 0).sum(1); top = None
+                for r in range(max(0, int(ny - 300)), int(ny) - 25):
+                    if (win[r:r + 25] >= 30).all(): top = r; break
+                if top is not None: lim = min(lim, top - 6)
+                if lim > 0: char[:lim, :, 3] = 0
+                # 잘라 내고 남아 떠 있는 조각 제거: 가장 큰 덩어리(몸)의 8% 미만인 분리된 조각을 지운다
+                n, lab, st, _ = cv2.connectedComponentsWithStats((char[..., 3] > 0).astype(np.uint8), 8)
+                if n > 2:
+                    big = st[1:, cv2.CC_STAT_AREA].max()
+                    for k in range(1, n):
+                        if st[k, cv2.CC_STAT_AREA] < big * .08: char[lab == k, 3] = 0
             comp, tip = composite(char, pose, wpn, (job.get('weapon') or {}).get('grip', .4))
             frames.append(D.pixel(comp, P)); keys.append((an, i))
             if tip is None: kp = D.fk(pose); tip = (kp[4][0] + PADL, kp[4][1] + PADT)
