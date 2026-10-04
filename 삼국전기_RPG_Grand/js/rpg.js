@@ -4,8 +4,9 @@
 /* ---------- 성장 곡선 · 적 레벨 ---------- */
 const expNeed=l=>Math.round(40*l+10*l*l+.9*l*l*l);
 const expScale=L=>expNeed(L)/150*(L>60?Math.max(.35,1-(L-60)/60):1);
-const hpMul=L=>1.1+(L-1)*.22+(L-1)*(L-1)*.0066;
-const powMul=L=>1+(L-1)*.18+(L-1)*(L-1)*.004;
+/* 적 체력 · 공격력 성장 (그랑풍 난이도 조정: 초반은 조금 단단하게, 후반 공격력 급증 완화) */
+const hpMul=L=>1.6+(L-1)*.30+(L-1)*(L-1)*.0045;
+const powMul=L=>1.15+(L-1)*.16+(L-1)*(L-1)*.0022;
 const cycMul=()=>G.cycle>=3?1+.3*(G.cycle-2):1;
 const stageLv=()=>Math.min(MAXLV,STAGE_LV[G.stage]+G.cycle*33);
 const pick=a=>a[(Math.random()*a.length)|0];

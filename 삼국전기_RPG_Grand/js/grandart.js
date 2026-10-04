@@ -35,10 +35,13 @@ const GRAND_BACK = 'rgba(20,14,40,.32)';
 function renderGrand(g, L, P, pose, sx, sy, scale, facing, opt) {
   opt = opt || {}; const ps = pose || {}, k = scale * (L.scale || 1) * SD_K, f = facing < 0 ? -1 : 1;
   const sp = Math.cos(ps.spin || 0), sq = Math.abs(sp) < .15 ? .15 * (sp < 0 ? -1 : 1) : sp;
-  const tint = opt.flash ? 'rgba(255,255,255,.75)' : opt.tint || null, J = P.joints;
+  const tint = opt.flash ? 'rgba(255,255,255,.75)' : opt.tint || L.gtint || null, J = P.joints;
   g.save(); g.imageSmoothingEnabled = true; g.translate(sx, sy); g.scale(k * f * sq, k);
   if (ps.lie) { g.translate(58, -10); g.rotate(-Math.PI / 2) }
   const bob = (ps.bob || 0) * 1.6; g.translate(0, -bob);
+  /* 말 탄 모습: 기존 말 그림(sdHorse) 위에 기수를 앉힌다 (관절 좌표계가 같다) */
+  if (L.mount && typeof sdHorse === 'function') { sdHorse(g, L.mount, L, ps); const hb = ps.gallop ? Math.abs(Math.sin(ps.gallop)) * 2.4 : 0; g.translate(-5, -34 - hb);
+    if (ps.rear) { g.translate(-26, 36); g.rotate(-ps.rear * .32); g.translate(26, -36) } }
   const draw = (key, px, py, rot, back) => {
     const d = P.parts[key]; if (!d) return;
     const t = [back ? GRAND_BACK : null, tint].filter(Boolean);
@@ -91,3 +94,17 @@ function grandTinted2(P, key, ts) {
 const _renderModelGr = renderModel, _renderModelOGr = renderModelOutlined;
 renderModel = function (g, L, pose, sx, sy, scale, facing, opt) { const P = grandOf(L); return P ? renderGrand(g, L, P, pose, sx, sy, scale, facing, opt) : _renderModelGr(g, L, pose, sx, sy, scale, facing, opt) };
 renderModelOutlined = function (g, L, pose, sx, sy, scale, facing, opt) { const P = grandOf(L); return P ? renderGrand(g, L, P, pose, sx, sy, scale, facing, opt) : _renderModelOGr(g, L, pose, sx, sy, scale, facing, opt) };
+
+/* ---------- NPC · 기병 · 소환수 외형 연결 ----------
+   대화창 · 군영 · 호위 · 원군 NPC, 기병(세력별 창병 그림 + 말), 돌격 기병, 소환수도 그랑풍 그림으로 */
+const GRAND_NPC = { '유비': 'liubei', '미부인': 'mifuren', '황개': 'huanggai', '미축': 'mizhu', '법정': 'fazheng', '병사': 'ally_sp', '전령': 'ally_fl' };
+if (typeof NPC_LOOK !== 'undefined') {
+  if (!NPC_LOOK['법정']) NPC_LOOK['법정'] = Object.assign({}, NPC_LOOK['미축'] || {}, { body: '#2f5a3a', sub: '#c8b060', hat: 'taoist', weapon: 'fan', face: 'calm' });
+  for (const n in GRAND_NPC) if (NPC_LOOK[n] && GRAND_IDS().includes(GRAND_NPC[n])) { NPC_LOOK[n].grand = GRAND_NPC[n]; if (n === '미축') NPC_LOOK[n].weapon = 'none' }
+}
+if (typeof enemyLook === 'function') { const _enemyLookCv = enemyLook; enemyLook = function (fac, tok) { const L = _enemyLookCv(fac, tok); if (tok === 'cv' && !L.grand && GRAND_IDS().includes(fac + '_sp')) L.grand = fac + '_sp'; return L } }
+if (typeof riderLook === 'function') { const _riderLookG = riderLook; riderLook = function (e) { const L = _riderLookG(e); if (GRAND_IDS().includes('wei_sp')) L.grand = 'wei_sp'; return L } }
+if (typeof SUMMON_LOOK !== 'undefined') {
+  if (SUMMON_LOOK.stone && GRAND_IDS().includes('wei_sh')) { SUMMON_LOOK.stone.grand = 'wei_sh'; SUMMON_LOOK.stone.gtint = 'rgba(150,150,150,.6)' }
+  if (SUMMON_LOOK.qiang && GRAND_IDS().includes('yuan_sp')) SUMMON_LOOK.qiang.grand = 'yuan_sp';
+}

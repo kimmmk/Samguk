@@ -22,8 +22,8 @@ const P2K={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',Com
 let ctrlHeld=false;addEventListener('blur',()=>{ctrlHeld=false});
 addEventListener('keydown',e=>{
   ctrlHeld=e.ctrlKey;
-  /* 히든 코드: Ctrl+Alt+Shift + I(금화) / O(강화석) / P(비급 조각) / L(착용 레벨 = 캐릭터 레벨) / K(레벨 +1) / U(금화 +100000) / ;(스킬 · 능력치 포인트 +10) */
-  if(e.ctrlKey&&e.altKey&&e.shiftKey&&(e.code==='KeyI'||e.code==='KeyO'||e.code==='KeyP'||e.code==='KeyL'||e.code==='KeyK'||e.code==='KeyU'||e.code==='Semicolon')){e.preventDefault();if((!e.repeat||e.code==='KeyK')&&window.cheatCode)cheatCode(e.code);return}
+  /* 히든 코드: Ctrl+Alt+Shift + I(금화) / O(강화석) / P(비급 조각) / L(착용 레벨 = 캐릭터 레벨) / K(레벨 +1) / U(금화 +100000) / ;(스킬 · 능력치 포인트 +10) / '(강화 확률 100% 토글) */
+  if(e.ctrlKey&&e.altKey&&e.shiftKey&&(e.code==='KeyI'||e.code==='KeyO'||e.code==='KeyP'||e.code==='KeyL'||e.code==='KeyK'||e.code==='KeyU'||e.code==='Semicolon'||e.code==='Quote')){e.preventDefault();if((!e.repeat||e.code==='KeyK')&&window.cheatCode)cheatCode(e.code);return}
   let a,pl;if(SYSK[e.code]){a=SYSK[e.code];pl=-1}else if(P1K[e.code]){a=P1K[e.code];pl=0}else if(P2K[e.code]){a=P2K[e.code];pl=1}else return;
   e.preventDefault();audioInit();
   if(!keys[a]){pressed[a]=true;keyHist.push(a);if(keyHist.length>12)keyHist.shift()}keys[a]=true;
